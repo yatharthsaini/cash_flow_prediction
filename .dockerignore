@@ -52,7 +52,7 @@ media
 *.py[cod]
 *$py.class
 
-# C extensionsb6d547e6950b   postgres:latest                        "docker-entrypoint.s…"   44 hours ago    Up 44 hours                     0.0.0.0:5433->5432/tcp, :::5433->5432/tcp              whatsapp_backend_db
+# C extensionsb6d547e6950b   postgres:latest                        "docker-entrypoint.s…"   44 hours ago    Up 44 hours                     0.0.0.0:5433->5432/tcp, :::5433->5432/tcp              cash_flow_prediciton_db
 
 *.so
 

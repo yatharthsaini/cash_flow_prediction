@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    stdin_open: true
+    tty: true
+    networks:
+      - default
+
+  nginx:
+    ports:
+      - "8019:80"
+
+networks:
+  default:
+      name: cash_flow_prediction_network
+      driver: bridge
