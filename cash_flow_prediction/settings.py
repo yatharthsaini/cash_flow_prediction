@@ -12,8 +12,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
-from constants import MethodNames
+from corsheaders.defaults import default_headers
 
+from constants import MethodNames
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -47,6 +48,16 @@ THIRD_PARTY_APPS = [
 
 CASH_FLOW_PREDICTION = ["cash_flow"]
 
+ROOT_APP = ['cash_flow_prediction']
+
+THIRD_PARTY_APPS = [
+    "rest_framework",
+    "corsheaders"
+]
+
+INSTALLED_APPS = DJANGO_CORE_APPS + THIRD_PARTY_APPS + ROOT_APP
+
+DJANGO_MIDDLEWARE = [
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
 INSTALLED_APPS = ROOT_APP + DJANGO_CORE_APPS + THIRD_PARTY_APPS + CASH_FLOW_PREDICTION
@@ -85,6 +96,24 @@ CORS_ALLOW_METHODS = [
 
 
 ROOT_URLCONF = 'cash_flow_prediction.urls'
+
+# CORS Headers Settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",
+    "http://localhost:3000",
+    "http://127.0.0.1:8000",
+]
+
+CORS_ALLOW_METHODS = [
+    MethodNames.GET.value,
+    MethodNames.POST.value,
+    MethodNames.DELETE.value,
+    MethodNames.PATCH.value,
+    MethodNames.OPTIONS.value,
+    MethodNames.HEAD.value,
+]
+
+CORS_ALLOW_HEADERS = default_headers
 
 TEMPLATES = [
     {
@@ -156,6 +185,24 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+DEFAULT_PERMISSION_CLASS = [
+    # "rest_framework.permissions.IsAuthenticated",
+]
+
+DEFAULT_AUTHENTICATION_CLASSES = [
+    # "rest_framework.authentication.BasicAuthentication",
+]
+
+
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": DEFAULT_PERMISSION_CLASS,
+    "DEFAULT_AUTHENTICATION_CLASSES": DEFAULT_AUTHENTICATION_CLASSES,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+}
 
 
 # Internationalization
