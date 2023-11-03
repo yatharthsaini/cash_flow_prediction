@@ -19,11 +19,11 @@ services:
     networks:
       - default
     ports:
-      - "5438:5432"
+      - "5440:5432"
 
   nginx:
     ports:
-      - "8000:80"
+      - "8008:80"
 
 volumes:
   postgres_data:

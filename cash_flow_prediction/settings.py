@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from constants import MethodNames
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,12 +27,12 @@ SECRET_KEY = 'django-insecure-m-gz$pex8)q))whz97ip_n%$4!v*=g9%r26-v3m3znnqp#5v2o
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split()
+ROOT_APP = ["cash_flow_prediction"]
 
 # Application definition
 
-INSTALLED_APPS = [
+DJANGO_CORE_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -38,8 +40,18 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
+THIRD_PARTY_APPS = [
+    'rest_framework',
+    'corsheaders'
+]
 
-MIDDLEWARE = [
+CASH_FLOW_PREDICTION = ["cash_flow"]
+
+TEST_RUNNER = "django.test.runner.DiscoverRunner"
+
+INSTALLED_APPS = ROOT_APP + DJANGO_CORE_APPS + THIRD_PARTY_APPS + CASH_FLOW_PREDICTION
+
+DJANGO_MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -48,6 +60,29 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+THIRD_PARTY_MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
+]
+
+MIDDLEWARE = DJANGO_MIDDLEWARE + THIRD_PARTY_MIDDLEWARE
+
+# CORS Headers Settings
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",
+    "http://localhost:3000",
+    "http://127.0.0.1:8000",
+]
+
+CORS_ALLOW_METHODS = [
+    MethodNames.GET.value,
+    MethodNames.POST.value,
+    MethodNames.DELETE.value,
+    MethodNames.PATCH.value,
+    MethodNames.OPTIONS.value,
+    MethodNames.HEAD.value,
+]
+
 
 ROOT_URLCONF = 'cash_flow_prediction.urls'
 
@@ -68,17 +103,40 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'cash_flow_prediction.wsgi.application'
+ASGI_APPLICATION = 'cash_flow_prediction.asgi.application'
 
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": os.environ.get("POSTGRES_ENGINE"),
+        "NAME": os.environ.get("POSTGRES_DB"),
+        "USER": os.environ.get("POSTGRES_USER"),
+        "PASSWORD": os.environ.get("POSTGRES_PASSWORD"),
+        "HOST": os.environ.get("POSTGRES_HOST"),
+        "PORT": os.environ.get("POSTGRES_PORT"),
     }
 }
+
+DEFAULT_PERMISSION_CLASS = [
+    # "rest_framework.permissions.IsAuthenticated",
+]
+
+DEFAULT_AUTHENTICATION_CLASSES = [
+    # "rest_framework.authentication.BasicAuthentication",
+]
+
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": DEFAULT_PERMISSION_CLASS,
+    "DEFAULT_AUTHENTICATION_CLASSES": DEFAULT_AUTHENTICATION_CLASSES,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+}
+
 
 
 # Password validation
@@ -116,6 +174,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR / "static_root")
+
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+MEDIA_URL = "/media/"
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
