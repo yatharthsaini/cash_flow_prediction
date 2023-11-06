@@ -12,13 +12,15 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
+from celery import Celery
 from corsheaders.defaults import default_headers
-
 from constants import MethodNames
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables from .env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -30,14 +32,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 ENVIRONMENT = os.environ.get('ENVIRONMENT')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-
-DEBUG = True if ENVIRONMENT == "dev" else False
-
-# Read .env for local server
-if DEBUG:
-    from dotenv import load_dotenv
-
-    load_dotenv()  # take environment variables from .env.
+DEBUG = True
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split()
 
@@ -59,7 +54,8 @@ THIRD_PARTY_APPS = [
     "rest_framework",
     "corsheaders",
     'rest_framework_swagger',
-    'drf_spectacular'
+    'drf_spectacular',
+    'django_celery_beat'
 ]
 
 CASH_FLOW_PREDICTION_APPS = ["cash_flow"]
@@ -172,6 +168,8 @@ DATABASES = {
     }
 }
 
+print("----------------------------", DATABASES)
+
 # rest framework
 DEFAULT_PERMISSION_CLASS = [
     # "rest_framework.permissions.IsAuthenticated",
@@ -243,3 +241,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # For running test cases...
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
+# for authentication using paymeIndia auth apis
+TOKEN_AUTHENTICATION_URL = os.environ.get('PAYME_BASE_URL') + os.environ.get('TOKEN_AUTHENTICATION_URL')
+
+# Celery config
+celery = Celery('cash_flow_prediction')
+celery.config_from_object('')
+
+# Redis instance
+REDIS_URL = os.environ.get('REDIS_URL')
+
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND")
+
+
+CELERY_TIMEZONE = "Asia/Kolkata"
+CELERY_TASK_TRACK_STARTED = True

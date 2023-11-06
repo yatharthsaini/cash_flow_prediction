@@ -1,5 +1,7 @@
 asgiref
 boto3
+celery
+django-celery-beat
 Django
 django-cors-headers
 django-coverage-plugin

@@ -7,6 +7,8 @@ services:
     tty: true
     networks:
       - default
+    depends_on:
+      - db
 
   db:
     image: postgres:latest
@@ -20,6 +22,14 @@ services:
       - default
     ports:
       - "5440:5432"
+
+
+  redis:
+    image: redis:latest
+    container_name: abfl_backend_redis
+    ports:
+      - "6381:6379"
+
 
   nginx:
     ports:
