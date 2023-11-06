@@ -30,13 +30,19 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 ENVIRONMENT = os.environ.get('ENVIRONMENT')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+
+DEBUG = True if ENVIRONMENT == "dev" else False
+
+# Read .env for local server
+if DEBUG:
+    from dotenv import load_dotenv
+
+    load_dotenv()  # take environment variables from .env.
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split()
-ROOT_APP = ["cash_flow_prediction"]
 
-# Application definition
-ROOT_APP = ['cash_flow_prediction']
+# application definition
+ROOT_APP = ["cash_flow_prediction"]
 
 # core django apps
 DJANGO_CORE_APPS = [
@@ -47,12 +53,6 @@ DJANGO_CORE_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 ]
-THIRD_PARTY_APPS = [
-    'rest_framework',
-    'corsheaders'
-]
-
-CASH_FLOW_PREDICTION = ["cash_flow"]
 
 # third party apps used in the project
 THIRD_PARTY_APPS = [
@@ -62,14 +62,11 @@ THIRD_PARTY_APPS = [
     'drf_spectacular'
 ]
 
+CASH_FLOW_PREDICTION_APPS = ["cash_flow"]
+
 INSTALLED_APPS = DJANGO_CORE_APPS + THIRD_PARTY_APPS + ROOT_APP
 
 # default django middleware
-DJANGO_MIDDLEWARE = [
-TEST_RUNNER = "django.test.runner.DiscoverRunner"
-
-INSTALLED_APPS = ROOT_APP + DJANGO_CORE_APPS + THIRD_PARTY_APPS + CASH_FLOW_PREDICTION
-
 DJANGO_MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -83,7 +80,6 @@ DJANGO_MIDDLEWARE = [
 THIRD_PARTY_MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
 ]
-
 
 MIDDLEWARE = DJANGO_MIDDLEWARE + THIRD_PARTY_MIDDLEWARE
 
@@ -176,6 +172,7 @@ DATABASES = {
     }
 }
 
+# rest framework
 DEFAULT_PERMISSION_CLASS = [
     # "rest_framework.permissions.IsAuthenticated",
 ]
@@ -192,8 +189,6 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ],
 }
-
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -213,27 +208,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-DEFAULT_PERMISSION_CLASS = [
-    # "rest_framework.permissions.IsAuthenticated",
-]
-
-DEFAULT_AUTHENTICATION_CLASSES = [
-    # "rest_framework.authentication.BasicAuthentication",
-]
-
-# rest framework
-REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": DEFAULT_PERMISSION_CLASS,
-    "DEFAULT_AUTHENTICATION_CLASSES": DEFAULT_AUTHENTICATION_CLASSES,
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_RENDERER_CLASSES": [
-        "rest_framework.renderers.JSONRenderer",
-    ],
-}
-SPECTACULAR_SETTINGS = {
-    "TITLE": "Django CashFLowPrediction",
-}
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
@@ -249,10 +223,6 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
-# STATIC_ROOT = os.path.join(BASE_DIR / "static_root")
-
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 
@@ -269,4 +239,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media_root")
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# For running test cases...
+TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
