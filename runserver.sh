@@ -2,7 +2,7 @@
 
 #You have 20 unapplied migration(s). Your project may not work properly until you apply the migrations for app(s): admin, auth, cam, contenttypes, sessions.
 #yes | python manage.py makemigrations
-yes | python manage.py migrate
+#yes | python manage.py migrate
 python manage.py collectstatic --noinput
 
 if [ "$ENVIRONMENT" != "PRODUCTION" ]; then

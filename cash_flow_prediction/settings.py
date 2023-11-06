@@ -15,6 +15,7 @@ import os
 from corsheaders.defaults import default_headers
 
 from constants import MethodNames
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -23,7 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-m-gz$pex8)q))whz97ip_n%$4!v*=g9%r26-v3m3znnqp#5v2o'
+SECRET_KEY = os.environ.get('SECRET_KEY')
+
+# ENVIRONMENT
+ENVIRONMENT = os.environ.get('ENVIRONMENT')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -32,7 +36,9 @@ ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split()
 ROOT_APP = ["cash_flow_prediction"]
 
 # Application definition
+ROOT_APP = ['cash_flow_prediction']
 
+# core django apps
 DJANGO_CORE_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -48,15 +54,17 @@ THIRD_PARTY_APPS = [
 
 CASH_FLOW_PREDICTION = ["cash_flow"]
 
-ROOT_APP = ['cash_flow_prediction']
-
+# third party apps used in the project
 THIRD_PARTY_APPS = [
     "rest_framework",
-    "corsheaders"
+    "corsheaders",
+    'rest_framework_swagger',
+    'drf_spectacular'
 ]
 
 INSTALLED_APPS = DJANGO_CORE_APPS + THIRD_PARTY_APPS + ROOT_APP
 
+# default django middleware
 DJANGO_MIDDLEWARE = [
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
@@ -76,24 +84,40 @@ THIRD_PARTY_MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
 ]
 
+
 MIDDLEWARE = DJANGO_MIDDLEWARE + THIRD_PARTY_MIDDLEWARE
 
-# CORS Headers Settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8080",
-    "http://localhost:3000",
-    "http://127.0.0.1:8000",
-]
+if DEBUG:
+    MIDDLEWARE += ['debug_toolbar.middleware.DebugToolbarMiddleware']
 
-CORS_ALLOW_METHODS = [
-    MethodNames.GET.value,
-    MethodNames.POST.value,
-    MethodNames.DELETE.value,
-    MethodNames.PATCH.value,
-    MethodNames.OPTIONS.value,
-    MethodNames.HEAD.value,
-]
+    SPECTACULAR_SETTINGS = {
+        "TITLE": "cash_flow_prediction",
+        "DESCRIPTION": "Cash flow prediction API's",
+        "VERSION": "1.0.0",
+        "SWAGGER_UI_DIST": "SIDECAR",  # shorthand to use the sidecar instead
+        "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
+        "REDOC_DIST": "SIDECAR",
+    }
 
+    DEBUG_TOOLBAR_PANELS = [
+        'debug_toolbar.panels.history.HistoryPanel',
+        'debug_toolbar.panels.versions.VersionsPanel',
+        'debug_toolbar.panels.timer.TimerPanel',
+        'debug_toolbar.panels.settings.SettingsPanel',
+        'debug_toolbar.panels.headers.HeadersPanel',
+        'debug_toolbar.panels.request.RequestPanel',
+        'debug_toolbar.panels.sql.SQLPanel',
+        'debug_toolbar.panels.staticfiles.StaticFilesPanel',
+        'debug_toolbar.panels.templates.TemplatesPanel',
+        'debug_toolbar.panels.cache.CachePanel',
+        'debug_toolbar.panels.signals.SignalsPanel',
+        'debug_toolbar.panels.logging.LoggingPanel',
+        'debug_toolbar.panels.redirects.RedirectsPanel',
+        'debug_toolbar.panels.profiling.ProfilingPanel',
+    ]
+    DEBUG_TOOLBAR_CONFIG = {
+        "SHOW_TOOLBAR_CALLBACK": lambda request: True,
+    }
 
 ROOT_URLCONF = 'cash_flow_prediction.urls'
 
@@ -104,6 +128,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:8000",
 ]
 
+# imported MethodNames enum from the constants.py
 CORS_ALLOW_METHODS = [
     MethodNames.GET.value,
     MethodNames.POST.value,
@@ -115,6 +140,7 @@ CORS_ALLOW_METHODS = [
 
 CORS_ALLOW_HEADERS = default_headers
 
+# templates default
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -138,6 +164,7 @@ ASGI_APPLICATION = 'cash_flow_prediction.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+# databases used in the django projects, creds to be fetched from .env
 DATABASES = {
     "default": {
         "ENGINE": os.environ.get("POSTGRES_ENGINE"),
@@ -194,7 +221,7 @@ DEFAULT_AUTHENTICATION_CLASSES = [
     # "rest_framework.authentication.BasicAuthentication",
 ]
 
-
+# rest framework
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": DEFAULT_PERMISSION_CLASS,
     "DEFAULT_AUTHENTICATION_CLASSES": DEFAULT_AUTHENTICATION_CLASSES,
@@ -203,7 +230,9 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ],
 }
-
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Django CashFLowPrediction",
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
@@ -224,10 +253,20 @@ STATIC_URL = 'static/'
 # STATIC_ROOT = os.path.join(BASE_DIR / "static_root")
 
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
+
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
+
+STATIC_ROOT = os.path.join(BASE_DIR / "static_root")
+
+MEDIA_ROOT = os.path.join(BASE_DIR, "media_root")
 
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
