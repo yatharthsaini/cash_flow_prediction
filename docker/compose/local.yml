@@ -21,7 +21,7 @@ services:
     networks:
       - default
     ports:
-      - "5440:5432"
+      - "5438:5432"
 
 
   redis:

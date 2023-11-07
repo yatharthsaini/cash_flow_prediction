@@ -168,8 +168,6 @@ DATABASES = {
     }
 }
 
-print("----------------------------", DATABASES)
-
 # rest framework
 DEFAULT_PERMISSION_CLASS = [
     # "rest_framework.permissions.IsAuthenticated",
