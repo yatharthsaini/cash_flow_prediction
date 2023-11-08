@@ -2,6 +2,7 @@ asgiref
 boto3
 celery
 django-celery-beat
+django-celery-results
 Django
 django-cors-headers
 django-coverage-plugin
@@ -11,6 +12,7 @@ drf-spectacular
 drf-spectacular-sidecar
 drf_spectacular
 django-rest-swagger
+redis
 pytz
 sqlparse
 sidecar

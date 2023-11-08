@@ -14,8 +14,8 @@ from pathlib import Path
 import os
 from celery import Celery
 from corsheaders.defaults import default_headers
-from constants import MethodNames
 from dotenv import load_dotenv
+from cash_flow.api.v1.utils import MethodNames
 
 load_dotenv()  # take environment variables from .env
 
@@ -55,7 +55,8 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     'rest_framework_swagger',
     'drf_spectacular',
-    'django_celery_beat'
+    'django_celery_beat',
+    'django_celery_results'
 ]
 
 CASH_FLOW_PREDICTION_APPS = ["cash_flow"]
@@ -221,13 +222,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
-
-STATICFILES_DIRS = [
-    BASE_DIR / "static",
-]
-
-STATIC_ROOT = os.path.join(BASE_DIR / "static_root")
-
+STATIC_ROOT = "static_root"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media_root")
 
 
@@ -246,12 +241,23 @@ TOKEN_AUTHENTICATION_URL = os.environ.get('PAYME_BASE_URL') + os.environ.get('TO
 celery = Celery('cash_flow_prediction')
 celery.config_from_object('')
 
+# celery setting.
+CELERY_CACHE_BACKEND = 'default'
+
+# django setting.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'my_cache_table',
+    }
+}
+
 # Redis instance
 REDIS_URL = os.environ.get('REDIS_URL')
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND")
-
+CELERY_CACHE_BACKEND = 'django-cache'
 
 CELERY_TIMEZONE = "Asia/Kolkata"
 CELERY_TASK_TRACK_STARTED = True
