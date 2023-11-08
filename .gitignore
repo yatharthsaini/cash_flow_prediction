@@ -948,4 +948,4 @@ newrelic.ini
 */dell/*
 
 docker-compose.override.yml
-
+static_root/
