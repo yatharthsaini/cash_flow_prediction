@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    image: cash_flow_prediction_django
+    hostname: docker-cash_flow_prediction-django
+    container_name: cash_flow_prediction_django
+    restart: always
+    command: bash -c "/app/runserver.sh"
+    volumes:
+      - .:/app
+      - static_root:/app/static
+      - media_root:/app/media
+    env_file:
+      - ./.env
+    stdin_open: true
+    tty: true
+
+  nginx:
+    build: ./docker/nginx
+    image: cash_flow_prediction_nginx
+    hostname: docker-cash-flow-prediction-nginx
+    container_name: cash_flow_prediction_nginx
+    volumes:
+      - /var/log/nginx/:/var/log/nginx/
+    depends_on:
+      - app
+
+networks:
+  default:
+    name: cash_flow_prediction_network
+
+volumes:
+  static_root:
+  media_root:

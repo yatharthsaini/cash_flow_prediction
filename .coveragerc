@@ -1,0 +1,22 @@
+[run]
+source = .
+omit=
+    */venv/*
+    */static_root/*
+    */staticfiles/*
+    */migrations/*
+    */__init__.py
+    */admin.py
+    */templates/*
+    requirements/*
+    */cash_flow_prediction/urls.py
+    */settings.py
+    */asgi.py
+    */wsgi.py
+    manage.py
+
+plugins =
+    django_coverage_plugin
+
+[django_coverage_plugin]
+template_extensions = html, txt, tex, email
