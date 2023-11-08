@@ -1,22 +1,6 @@
 from django.core.mail import send_mail, EmailMessage
 from django.conf import settings
 
-from enum import Enum
-
-
-class MethodNames(Enum):
-    """
-    Enum For Method Names
-    """
-
-    GET = "GET"
-    POST = "POST"
-    PUT = "PUT"
-    DELETE = "DELETE"
-    PATCH = "PATCH"
-    OPTIONS = "OPTIONS"
-    HEAD = "HEAD"
-
 
 def send_email(subject, message, recipient_list, attachments=None, from_email=None):
     if from_email is None:
