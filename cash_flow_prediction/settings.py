@@ -15,7 +15,8 @@ import os
 from celery import Celery
 from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
-from cash_flow.api.v1.utils import MethodNames
+from utils.constants import MethodNames
+
 
 load_dotenv()  # take environment variables from .env
 
