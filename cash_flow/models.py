@@ -1,5 +1,4 @@
 from django.db import models
-from django.contrib.postgres.fields import JSONField
 
 
 class CreatedUpdatedAtMixin(models.Model):
@@ -52,7 +51,7 @@ class NbfcWiseCollectionData(CreatedUpdatedAtMixin):
         return f"{self.nbfc}"
 
     nbfc = models.CharField(unique=True, max_length=200)
-    collection_json = JSONField()
+    collection_json = models.JSONField()
 
     class Meta:
         ordering = ('-created_at',)
