@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.postgres.fields import JSONField
 
 
 class CreatedUpdatedAtMixin(models.Model):
@@ -26,23 +27,47 @@ class UserPermissionModel(CreatedUpdatedAtMixin):
 
 class NbfcWiseCollectionData(CreatedUpdatedAtMixin):
     """
-    model for storing the nbfc name and corresponding collection json against it.
-    fields :
-        ndfc : stores the name of a nbfc
+        model for storing the nbfc name and corresponding collection json against it.
+        nbfc : stores the name of a nbfc -> str
         collection_json : stores the collection data for a particular nbfc
+        format :
+        {
+            <due_date> : {
+                "New" : {
+                : value in percentage,
+                : value in percentage,
+                : value in percentage,
+                : value in percentage,
+                },
+                "Old" : {
+                : value in percentage,
+                : value in percentage,
+                : value in percentage,
+                : value in percentage,
+                }
+            }
+        }
     """
+    def __str__(self):
+        return f"{self.nbfc}"
+
     nbfc = models.CharField(unique=True, max_length=200)
-    collection_json = models.JSONField()
+    collection_json = JSONField()
+
+    class Meta:
+        ordering = ('-created_at',)
 
 
 class ProjectionCollectionData(CreatedUpdatedAtMixin):
     """
-    model for storing total amount and due date against a nbfc
-    fields :
-        nbfc : stores the name of a particular nbfc
-        due_date : stores a particular due date
-        amount : total amount for a nbfc
+        model for storing total amount and due date against a nbfc
+        nbfc : stores the name of a particular nbfc -> str
+        due_date : stores a particular due date -> date field
+        amount : total amount for a nbfc -> float
     """
+    def __str__(self):
+        return f"{self.nbfc} is the nbfc with total amount: {self.amount}"
+
     nbfc = models.ForeignKey(NbfcWiseCollectionData, null=True, on_delete=models.CASCADE)
     due_date = models.DateField()
     amount = models.FloatField()
