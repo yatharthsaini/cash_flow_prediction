@@ -62,6 +62,7 @@ class ProjectionCollectionData(CreatedUpdatedAtMixin):
         model for storing total amount and due date against a nbfc
         nbfc : stores the name of a particular nbfc -> str
         due_date : stores a particular due date -> date field
+        collection_date : stores the date of collection that is varying from the due_date by -7 to -45
         amount : total amount for a nbfc -> float
     """
     def __str__(self):
@@ -69,6 +70,7 @@ class ProjectionCollectionData(CreatedUpdatedAtMixin):
 
     nbfc = models.ForeignKey(NbfcWiseCollectionData, null=True, on_delete=models.CASCADE)
     due_date = models.DateField()
+    collection_date = models.DateField()
     amount = models.FloatField()
 
     class Meta:

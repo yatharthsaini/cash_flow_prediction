@@ -242,8 +242,6 @@ TOKEN_AUTHENTICATION_URL = os.environ.get('PAYME_BASE_URL') + os.environ.get('TO
 celery = Celery('cash_flow_prediction')
 celery.config_from_object('')
 
-# celery setting.
-CELERY_CACHE_BACKEND = 'default'
 
 # django setting.
 CACHES = {
@@ -272,3 +270,5 @@ EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
+
+
