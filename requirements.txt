@@ -19,6 +19,7 @@ sidecar
 typing_extensions
 postgres
 python-dotenv
+python-dateutil
 
 
 

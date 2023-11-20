@@ -272,3 +272,7 @@ EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 
 
+# apis related to collection efficiency data
+COLLECTION_PREDICTION_POLL_URL = os.environ.get('COLLECTION_PREDICTION_POLL_URL')
+DUE_AMOUNT_URL = os.environ.get('DUE_AMOUNT_URL')
+COLLECTION_PREDICTION_TOKEN = os.environ.get('COLLECTION_PREDICTION_TOKEN')
