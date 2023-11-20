@@ -57,7 +57,8 @@ THIRD_PARTY_APPS = [
     'rest_framework_swagger',
     'drf_spectacular',
     'django_celery_beat',
-    'django_celery_results'
+    'django_celery_results',
+    'debug_toolbar'
 ]
 
 SERVER_APP = ["cash_flow"]
