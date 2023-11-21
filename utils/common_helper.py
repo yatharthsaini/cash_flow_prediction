@@ -11,7 +11,7 @@ class Common:
         Weighted Average Collection Efficiency= [(%of loans given to new user * CE)+(%of loans given to old user * CE)]
         """
         wace_dict = {}
-        for dpd in (-7, 46):
+        for dpd in range(-7, 46):
             ce_avg = 0
             if str(dpd) in ce_json_new:
                 ce_avg += ce_json_new[str(dpd)]
