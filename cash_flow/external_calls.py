@@ -30,4 +30,3 @@ def get_due_amount_response(due_date: str) -> Any:
     }
     response = requests.get(url=url, headers=headers, params=params)
     return response
-

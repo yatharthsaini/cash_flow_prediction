@@ -75,4 +75,3 @@ class ProjectionCollectionData(CreatedUpdatedAtMixin):
 
     class Meta:
         ordering = ('-created_at',)
-
