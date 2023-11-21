@@ -50,7 +50,7 @@ class NbfcWiseCollectionData(CreatedUpdatedAtMixin):
     def __str__(self):
         return f"{self.nbfc}"
 
-    nbfc = models.CharField(unique=True, max_length=200)
+    nbfc = models.CharField(max_length=200)
     collection_json = models.JSONField()
 
     class Meta:
