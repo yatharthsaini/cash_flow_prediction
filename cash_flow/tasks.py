@@ -29,7 +29,6 @@ def populate_wacm():
     due_date = get_due_date()
     dd_str = get_dd_str(due_date)
     projection_response_data = get_due_amount_response(due_date).json().get('data', {})
-
     for nbfc, projection_amount in projection_response_data.items():
         queryset = NbfcWiseCollectionData.objects.filter(nbfc=nbfc)
         if queryset.exists():
