@@ -13,12 +13,10 @@ class Common:
         wace_dict = {}
         for dpd in range(-7, 46):
             ce_avg = 0
-            if str(dpd) in ce_json_new:
-                ce_avg += ce_json_new[str(dpd)]
-            if str(dpd) in ce_json_old:
-                ce_avg += ce_json_old[str(dpd)]
+            str_dpd = str(dpd)
+            ce_avg += ce_json_new.get(str_dpd, 0)
+            ce_avg += ce_json_old.get(str_dpd, 0)
 
-            dpd_date = str(dpd)
-            wace_dict[dpd_date] = ce_avg
+            wace_dict[str_dpd] = ce_avg
 
         return wace_dict
