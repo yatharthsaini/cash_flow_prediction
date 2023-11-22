@@ -51,7 +51,7 @@ class NbfcWiseCollectionData(CreatedUpdatedAtMixin):
         return f"{self.nbfc}"
 
     nbfc = models.CharField(max_length=200)
-    collection_json = models.JSONField()
+    collection_json = models.JSONField(null=True)
 
     class Meta:
         ordering = ('-created_at',)
