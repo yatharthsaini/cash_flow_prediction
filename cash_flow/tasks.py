@@ -30,13 +30,9 @@ def populate_wacm():
     """
     current_date = datetime.now()
     due_date = (current_date + relativedelta(months=1)) - timedelta(1)
+    formatted_due_date = due_date.strftime('%Y-%m-%d')
     dd_str = str(due_date.day)
-    # projection_response_data = get_due_amount_response(due_date).json().get('data', {})
-    projection_response_data = {
-        "FINKURVE FINANCIAL SERVICES LIMITED": 9783852,
-        "NDX P2P Private Limited": 4140,
-        "PAYME INDIA FINANCIAL SERVICES PVT LTD": 21730640
-    }
+    projection_response_data = get_due_amount_response(formatted_due_date).json().get('data', {})
     nbfc_list = list(projection_response_data.keys())
     nbfc_ids = NbfcWiseCollectionData.objects.filter(nbfc__in=nbfc_list).order_by('created_at')
     nbfc_ids = dict(nbfc_ids.values_list('nbfc', 'id'))
