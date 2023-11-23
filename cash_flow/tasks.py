@@ -49,11 +49,18 @@ def populate_wacm():
         wace_dict = Common.get_wace_against_due_date(ce_new_json, ce_old_json)
 
         for dpd_date in wace_dict.keys():
-            dpd_date = str(dpd_date)
-            projection_collection_data = ProjectionCollectionData(
+            dpd_date_str = str(dpd_date)
+            collection_date = due_date + timedelta(int(dpd_date))
+
+            # db constraint of not getting the duplicate set of same nbfc, due_date and collection_date
+            obj, created = ProjectionCollectionData.objects.get_or_create(
                 nbfc_id=nbfc_ids[nbfc],
                 due_date=due_date,
-                collection_date=due_date + timedelta(int(dpd_date)),
-                amount=wace_dict[dpd_date] * projection_amount
+                collection_date=collection_date,
+                defaults={'amount': wace_dict[dpd_date_str] * projection_amount}
             )
-            projection_collection_data.save()
+
+            # If the object already existed, update its amount field
+            if not created:
+                obj.amount = wace_dict[dpd_date_str] * projection_amount
+                obj.save()
