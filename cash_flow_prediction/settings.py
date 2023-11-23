@@ -139,7 +139,7 @@ CORS_ALLOW_HEADERS = default_headers
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ['templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -271,6 +271,7 @@ EMAIL_HOST = os.environ.get("EMAIL_HOST")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND")
+EMAIL_FROM = os.environ.get("EMAIL_FROM")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 
 
@@ -278,3 +279,6 @@ DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 COLLECTION_PREDICTION_POLL_URL = os.environ.get('COLLECTION_PREDICTION_POLL_URL')
 DUE_AMOUNT_URL = os.environ.get('DUE_AMOUNT_URL')
 COLLECTION_PREDICTION_TOKEN = os.environ.get('COLLECTION_PREDICTION_TOKEN')
+
+# Project Name
+PROJECT_NAME = os.environ.get('PROJECT_NAME')

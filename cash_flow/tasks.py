@@ -5,9 +5,11 @@ from dateutil.relativedelta import relativedelta
 from cash_flow.external_calls import get_due_amount_response, get_collection_poll_response
 from cash_flow.models import NbfcWiseCollectionData, ProjectionCollectionData
 from utils.common_helper import Common
+from cash_flow_prediction.celery import celery_error_email
 
 
 @shared_task()
+@celery_error_email
 def populate_json_against_nbfc():
     """
     celery task to populate the models.NbfcWiseCollectionData

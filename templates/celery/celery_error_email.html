@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alert Email</title>
+    <style>
+        /* Add your custom styles here */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            background-color: red;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .footer {
+            background-color: #f2f2f2;
+            padding: 10px;
+            text-align: center;
+        }
+        p{
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Celery Alert Email</h1>
+        </div>
+        <div class="content">
+            <p>Hello Admin,</p>
+            <p>An alert has been triggered in your celery system. Please review the details below:</p>
+            <h2>Alert Details:</h2>
+
+            <p><strong>Project_name :</strong> {{project_name}} </p>
+            <p><strong>Server :</strong> {{server}}</p>
+            <p><strong>Alert Type :</strong> Celery Error</p>
+            <p><strong>Date and Time :</strong> {{starting_time}}</p>
+            <p><strong>Function :</strong> {{func_name}}</p>
+            <p><strong>Function Path :</strong> {{func_path}}</p>
+            <p><strong>Function Args :</strong> {{args}}</p>
+            <p><strong>Function Kwargs :</strong> {{kwargs}}</p>
+            <p><strong>Error Message :</strong> {{error}}</p>
+            <p><strong>Error Line :</strong> {{line_number}}</p>
+            <p><strong>Code Context :</strong> {{code_context}}</p>
+            <br>
+            <h2>Function Caller Detail</h2>
+            <p><strong>Caller Function :</strong> {{caller_function}}</p>
+            <p><strong>Caller Module :</strong> {{caller_module}}</p>
+            <p><strong>Caller Function Line Number :</strong> {{caller_line_number}}</p>
+            <p><strong>Caller File Name :</strong> {{caller_filename}}</p>
+            <br><br>
+            <p>Thank you for your attention.</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated alert email. Please do not reply to this email.</p>
+        </div>
+    </div>
+</body>
+</html>
