@@ -15,12 +15,12 @@ def populate_json_against_nbfc():
     collection_poll_data = get_collection_poll_response().json()
     nbfc_dict = collection_poll_data.get("data", {})
 
-    nbfc_collection_data_list = [
-        NbfcWiseCollectionData(nbfc=key, collection_json=value)
-        for key, value in nbfc_dict.items()
-    ]
-
-    NbfcWiseCollectionData.objects.bulk_create(nbfc_collection_data_list)
+    for key, value in nbfc_dict.items():
+        nfc_wise_collection_data = NbfcWiseCollectionData(
+            nbfc=key,
+            collection_json=value
+        )
+        nfc_wise_collection_data.save()
 
 
 @shared_task()
