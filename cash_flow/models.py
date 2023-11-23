@@ -75,3 +75,18 @@ class ProjectionCollectionData(CreatedUpdatedAtMixin):
 
     class Meta:
         ordering = ('-created_at',)
+
+
+class NfbcWiseDueAmount(CreatedUpdatedAtMixin):
+    """
+        model for storing nbfc wise due_date and amount for a particular pair of nbfc and due_date
+        nbfc: stores the nbfc name
+        due_date: DateField for storing the due_date
+        amount: Float field that stores amount for a particular nbfc and a due date
+    """
+    nbfc = models.ForeignKey(NbfcWiseCollectionData, on_delete=models.CASCADE)
+    due_date = models.DateField()
+    amount = models.FloatField()
+
+    class Meta:
+        ordering = ('-created_at',)
