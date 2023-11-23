@@ -77,7 +77,7 @@ class ProjectionCollectionData(CreatedUpdatedAtMixin):
         ordering = ('-created_at',)
 
 
-class NfbcWiseDueAmount(CreatedUpdatedAtMixin):
+class NbfcWiseDueAmount(CreatedUpdatedAtMixin):
     """
         model for storing nbfc wise due_date and amount for a particular pair of nbfc and due_date
         nbfc: stores the nbfc name
