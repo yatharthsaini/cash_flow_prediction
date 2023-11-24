@@ -9,6 +9,9 @@ services:
       - default
     depends_on:
       - db
+    ports:
+      - "8000:8000"
+
 
   db:
     image: postgres:latest
@@ -21,14 +24,14 @@ services:
     networks:
       - default
     ports:
-      - "5438:5432"
+      - "5437:5432"
 
 
   redis:
     image: redis:latest
-    container_name: abfl_backend_redis
+    container_name: cash_flow_prediction_backend_redis
     ports:
-      - "6381:6379"
+      - "6380:6379"
 
 
   nginx:

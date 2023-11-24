@@ -57,12 +57,13 @@ THIRD_PARTY_APPS = [
     'rest_framework_swagger',
     'drf_spectacular',
     'django_celery_beat',
-    'django_celery_results'
+    'django_celery_results',
+    'debug_toolbar'
 ]
 
-CASH_FLOW_PREDICTION_APPS = ["cash_flow"]
+SERVER_APP = ["cash_flow"]
 
-INSTALLED_APPS = DJANGO_CORE_APPS + THIRD_PARTY_APPS + ROOT_APP
+INSTALLED_APPS = DJANGO_CORE_APPS + THIRD_PARTY_APPS + ROOT_APP + SERVER_APP
 
 # default django middleware
 DJANGO_MIDDLEWARE = [
@@ -138,7 +139,7 @@ CORS_ALLOW_HEADERS = default_headers
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ['templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -242,8 +243,6 @@ TOKEN_AUTHENTICATION_URL = os.environ.get('PAYME_BASE_URL') + os.environ.get('TO
 celery = Celery('cash_flow_prediction')
 celery.config_from_object('')
 
-# celery setting.
-CELERY_CACHE_BACKEND = 'default'
 
 # django setting.
 CACHES = {
@@ -258,6 +257,7 @@ REDIS_URL = os.environ.get('REDIS_URL')
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND")
+CELERY_RESULT_SERIALIZER = os.environ.get("CELERY_RESULT_SERIALIZER")
 CELERY_CACHE_BACKEND = 'django-cache'
 
 CELERY_TIMEZONE = "Asia/Kolkata"
@@ -271,4 +271,14 @@ EMAIL_HOST = os.environ.get("EMAIL_HOST")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND")
+EMAIL_FROM = os.environ.get("EMAIL_FROM")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
+
+
+# apis related to collection efficiency data
+COLLECTION_PREDICTION_POLL_URL = os.environ.get('COLLECTION_PREDICTION_POLL_URL')
+DUE_AMOUNT_URL = os.environ.get('DUE_AMOUNT_URL')
+COLLECTION_PREDICTION_TOKEN = os.environ.get('COLLECTION_PREDICTION_TOKEN')
+
+# Project Name
+PROJECT_NAME = os.environ.get('PROJECT_NAME')

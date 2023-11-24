@@ -5,6 +5,10 @@
 #yes | python manage.py migrate
 python manage.py collectstatic --noinput
 
+# celery worker and schedular working in the background
+celery -A cash_flow_prediction worker -l info --detach
+celery -A cash_flow_prediction beat -l info --detach
+
 if [ "$ENVIRONMENT" != "PRODUCTION" ]; then
   # Do something if the ENVIRONMENT variable is set to LOCAL
   echo "The ENVIRONMENT variable is set to LOCAL"

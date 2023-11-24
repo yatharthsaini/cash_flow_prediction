@@ -11,7 +11,6 @@ class CreatedUpdatedAtMixin(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = "created_updated_base_mixin"
         abstract = True
 
 
@@ -24,3 +23,70 @@ class UserPermissionModel(CreatedUpdatedAtMixin):
     role = models.CharField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
+
+class NbfcWiseCollectionData(CreatedUpdatedAtMixin):
+    """
+        model for storing the nbfc name and corresponding collection json against it.
+        nbfc : stores the name of a nbfc -> str
+        collection_json : stores the collection data for a particular nbfc
+        format :
+        {
+            <due_date> : {
+                "New" : {
+                : value in percentage,
+                : value in percentage,
+                : value in percentage,
+                : value in percentage,
+                },
+                "Old" : {
+                : value in percentage,
+                : value in percentage,
+                : value in percentage,
+                : value in percentage,
+                }
+            }
+        }
+    """
+    def __str__(self):
+        return f"{self.nbfc}"
+
+    nbfc = models.CharField(max_length=200)
+    collection_json = models.JSONField(null=True)
+
+    class Meta:
+        ordering = ('-created_at',)
+
+
+class ProjectionCollectionData(CreatedUpdatedAtMixin):
+    """
+        model for storing total amount and due date against a nbfc
+        nbfc : stores the name of a particular nbfc -> str
+        due_date : stores a particular due date -> date field
+        collection_date : stores the date of collection that is varying from the due_date by -7 to -45
+        amount : total amount for a nbfc -> float
+    """
+    def __str__(self):
+        return f"{self.nbfc} is the nbfc with total amount: {self.amount}"
+
+    nbfc = models.ForeignKey(NbfcWiseCollectionData, null=True, on_delete=models.CASCADE)
+    due_date = models.DateField()
+    collection_date = models.DateField()
+    amount = models.FloatField()
+
+    class Meta:
+        ordering = ('-created_at',)
+
+
+class NbfcWiseDueAmount(CreatedUpdatedAtMixin):
+    """
+        model for storing nbfc wise due_date and amount for a particular pair of nbfc and due_date
+        nbfc: stores the nbfc name
+        due_date: DateField for storing the due_date
+        amount: Float field that stores amount for a particular nbfc and a due date
+    """
+    nbfc = models.ForeignKey(NbfcWiseCollectionData, on_delete=models.CASCADE)
+    due_date = models.DateField()
+    amount = models.FloatField()
+
+    class Meta:
+        ordering = ('-created_at',)
