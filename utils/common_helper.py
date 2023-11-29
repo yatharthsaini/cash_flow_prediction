@@ -1,6 +1,6 @@
-from typing import Any
+from datetime import date
 from django.db.models import Sum
-from cash_flow.models import NbfcAndDateWiseCashFlowData, ProjectionCollectionData
+from cash_flow.models import NbfcAndDateWiseCashFlowData, ProjectionCollectionData, NbfcWiseCollectionData
 
 
 class Common:
@@ -27,7 +27,7 @@ class Common:
         return wace_dict
 
     @staticmethod
-    def get_collection_and_loan_booked(nbfc: str, due_date: str) -> [float, float]:
+    def get_collection_and_loan_booked(nbfc: str, due_date: date) -> [float, float]:
         """
         helper function to get the collection amount from the models.NbfcAndDateWiseCashFlowData filtered
         against the nbfc name and the due_date
@@ -38,13 +38,14 @@ class Common:
         queryset = NbfcAndDateWiseCashFlowData.objects.filter(
             nbfc=nbfc,
             due_date=due_date
-        )
+        ).first()
+
         if queryset is None:
             return None, None
         return queryset.collection, queryset.loan_booked
 
     @staticmethod
-    def get_predicted_cash_inflow(nbfc: str, due_date: str) -> float:
+    def get_predicted_cash_inflow(nbfc: str, due_date: date) -> float:
         """
         function to return the predicted cash inflow for a particular nbfc and a particular due_date
         :param nbfc : a string value storing the nbfc name
@@ -52,17 +53,22 @@ class Common:
         :return: predicted cash inflow which is the summation of all the predicted amount from
         models.ProjectionCollectionData
         """
+        nbfc_instance = NbfcWiseCollectionData.objects.filter(nbfc=nbfc).first()
+        if nbfc_instance is None:
+            return 0.0
+        nbfc_id = nbfc_instance.id
         amount = ProjectionCollectionData.objects.filter(
-            nbfc=nbfc,
+            nbfc=nbfc_id,
             due_date=due_date
         ).aggregate(Sum('amount'))['amount__sum']
-
+        if amount is None:
+            return 0.0
         return amount
 
     @staticmethod
-    def get_variance_carry_forward_and_available_cash_flow(predicted_cash_inflow: float, collection: float,
-                                                           capital_inflow: float, hold_cash: float,
-                                                           loan_booked: float) -> [float, float, float]:
+    def get_variance_and_carry_forward(predicted_cash_inflow: float, collection: float,
+                                       capital_inflow: float, hold_cash: float,
+                                       loan_booked: float) -> [float, float, float]:
         """
         :param predicted_cash_inflow: float value for predicted_cash_inflow
         :param collection:  float value for collection
@@ -71,7 +77,23 @@ class Common:
         :param loan_booked: float value for loan_booked
         :return: variance, carry_forward and available cash flow calculated from given params
         """
-        variance = ((predicted_cash_inflow - collection)/predicted_cash_inflow)/100
-        carry_forward = (collection + capital_inflow)*(1-(hold_cash/100)) + loan_booked
-        available_cash_flow = (predicted_cash_inflow + carry_forward + capital_inflow)*(1-(hold_cash/100))
-        return variance, carry_forward, available_cash_flow
+        variance = 0
+        if predicted_cash_inflow and predicted_cash_inflow != 0:
+            variance = ((predicted_cash_inflow - collection) / predicted_cash_inflow) / 100
+        carry_forward = (collection + capital_inflow) * (1 - (hold_cash / 100)) + loan_booked
+        return variance, carry_forward
+
+    @staticmethod
+    def get_available_cash_flow(predicted_cash_inflow: float, prev_day_carry_forward: float,
+                                capital_inflow: float, hold_cash: float) -> float:
+        """helper function to compute the available cash flow using predicted_cash_inflow, capital inflow,
+        hold cash and carry_forward of previous day
+        :param predicted_cash_inflow: predicted float value
+        :param prev_day_carry_forward: carry forward mapped from the previous day, a float value
+        :param capital_inflow: user input float value
+        :param hold_cash: user input float value
+        :return: available cash flow as a float
+        """
+        available_cash_flow = (predicted_cash_inflow + prev_day_carry_forward + capital_inflow) * (
+                    1 - (hold_cash / 100))
+        return available_cash_flow

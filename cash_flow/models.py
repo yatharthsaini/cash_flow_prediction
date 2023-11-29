@@ -93,7 +93,7 @@ class NbfcAndDateWiseCashFlowData(CreatedUpdatedAtMixin):
     model for storing the predicted_cash_inflow, collection amount, loan_booked, available_cash_flow and variance
     for a particular nbfc and a due date
     """
-    nbfc = models.ForeignKey(NbfcWiseCollectionData, on_delete=models.CASCADE)
+    nbfc = models.CharField(max_length=200)
     due_date = models.DateField()
     predicted_cash_inflow = models.FloatField(null=True)
     collection = models.FloatField(null=True)
@@ -113,6 +113,9 @@ class CapitalInflowData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     nbfc = models.ForeignKey(NbfcAndDateWiseCashFlowData, on_delete=models.CASCADE)
     capital_inflow = models.FloatField()
 
+    class Meta:
+        ordering = ('-created_at',)
+
 
 class HoldCashData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     """
@@ -120,6 +123,9 @@ class HoldCashData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     """
     nbfc = models.ForeignKey(NbfcAndDateWiseCashFlowData, on_delete=models.CASCADE)
     hold_cash = models.FloatField()
+
+    class Meta:
+        ordering = ('-created_at',)
 
 
 class UserRatioData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
@@ -130,3 +136,5 @@ class UserRatioData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     old_percentage = models.FloatField()
     new_percentage = models.FloatField()
 
+    class Meta:
+        ordering = ('-created_at',)
