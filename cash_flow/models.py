@@ -122,7 +122,7 @@ class HoldCashData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     hold_cash = models.FloatField()
 
 
-class OldNewRatioData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
+class UserRatioData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     """
     model for storing the old to new ratio
     """
