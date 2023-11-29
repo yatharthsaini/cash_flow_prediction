@@ -14,6 +14,17 @@ class CreatedUpdatedAtMixin(models.Model):
         abstract = True
 
 
+class SetForFutureDateMixin(models.Model):
+    """
+    Base Model for having the start date, end_date and the boolean flag for set for future dates
+    """
+    start_date = models.DateField()
+    end_date = models.DateField(null=True)
+
+    class Meta:
+        abstract = True
+
+
 class UserPermissionModel(CreatedUpdatedAtMixin):
     """
         model to maintain the user permission
@@ -77,16 +88,45 @@ class ProjectionCollectionData(CreatedUpdatedAtMixin):
         ordering = ('-created_at',)
 
 
-class NbfcWiseDueAmount(CreatedUpdatedAtMixin):
+class NbfcAndDateWiseCashFlowData(CreatedUpdatedAtMixin):
     """
-        model for storing nbfc wise due_date and amount for a particular pair of nbfc and due_date
-        nbfc: stores the nbfc name
-        due_date: DateField for storing the due_date
-        amount: Float field that stores amount for a particular nbfc and a due date
+    model for storing the predicted_cash_inflow, collection amount, loan_booked, available_cash_flow and variance
+    for a particular nbfc and a due date
     """
     nbfc = models.ForeignKey(NbfcWiseCollectionData, on_delete=models.CASCADE)
     due_date = models.DateField()
-    amount = models.FloatField()
+    predicted_cash_inflow = models.FloatField(null=True)
+    collection = models.FloatField(null=True)
+    carry_forward = models.FloatField(null=True)
+    available_cash_flow = models.FloatField(null=True)
+    loan_booked = models.FloatField(null=True)
+    variance = models.FloatField(null=True)
 
     class Meta:
         ordering = ('-created_at',)
+
+
+class CapitalInflowData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
+    """
+    model for storing capital inflow data
+    """
+    nbfc = models.ForeignKey(NbfcAndDateWiseCashFlowData, on_delete=models.CASCADE)
+    capital_inflow = models.FloatField()
+
+
+class HoldCashData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
+    """
+    model for storing the hold cash data
+    """
+    nbfc = models.ForeignKey(NbfcAndDateWiseCashFlowData, on_delete=models.CASCADE)
+    hold_cash = models.FloatField()
+
+
+class OldNewRatioData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
+    """
+    model for storing the old to new ratio
+    """
+    nbfc = models.ForeignKey(NbfcAndDateWiseCashFlowData, on_delete=models.CASCADE)
+    old_percentage = models.FloatField()
+    new_percentage = models.FloatField()
+

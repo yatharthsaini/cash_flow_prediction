@@ -26,6 +26,7 @@ def populate_json_against_nbfc():
 
 
 @shared_task()
+@celery_error_email
 def populate_wacm():
     """
     celery task to populate the models.ProjectionCollectionData
