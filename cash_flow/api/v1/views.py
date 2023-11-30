@@ -99,8 +99,6 @@ class StoreUserRatio(APIView):
         old_percentage = payload.get('old_percentage', None)
         new_percentage = 100 - old_percentage
 
-        if due_date is None:
-            due_date = datetime.now()
         nbfc_and_date_wise_cash_flow_instance = NbfcAndDateWiseCashFlowData.objects.filter(
             nbfc=nbfc,
             due_date=due_date
@@ -151,11 +149,13 @@ class StoreCashFlowView(BaseModelViewSet):
         predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc, due_date)
         capital_inflow = CapitalInflowData.objects.filter(
             nbfc__nbfc=nbfc,
-            end_date__gte=due_date
+            end_date__gte=due_date,
+            start_date__lte=due_date
         ).order_by('-end_date').first().capital_inflow
         hold_cash = HoldCashData.objects.filter(
             nbfc__nbfc=nbfc,
             end_date__gte=due_date,
+            start_date__lte=due_date
         ).order_by('-end_date').first().hold_cash
 
         variance, carry_forward = Common.get_variance_and_carry_forward(
