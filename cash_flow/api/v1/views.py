@@ -97,7 +97,7 @@ class StoreUserRatio(APIView):
         else:
             due_date = datetime.strptime(due_date, "%Y-%m-%d")
         old_percentage = payload.get('old_percentage', None)
-        new_percentage = 100 - old_percentage
+        new_percentage = 100 - float(old_percentage)
 
         nbfc_and_date_wise_cash_flow_instance = NbfcAndDateWiseCashFlowData.objects.filter(
             nbfc=nbfc,
@@ -117,8 +117,8 @@ class StoreUserRatio(APIView):
             nbfc=nbfc_and_date_wise_cash_flow_instance,
             start_date=due_date,
             end_date=end_date,
-            new_percentage=new_percentage,
-            old_percentage=old_percentage
+            new_percentage=float(new_percentage),
+            old_percentage=float(old_percentage)
         )
         user_ratio_instance.save()
         return Response({"message": "User ratio stored successfully"}, status=status.HTTP_200_OK)
