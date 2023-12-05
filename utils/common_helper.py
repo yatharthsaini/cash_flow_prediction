@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime, date
 from django.db.models import Sum
 from cash_flow.models import NbfcAndDateWiseCashFlowData, ProjectionCollectionData, NbfcWiseCollectionData
 
@@ -38,7 +38,7 @@ class Common:
         queryset = NbfcAndDateWiseCashFlowData.objects.filter(
             nbfc=nbfc,
             due_date=due_date
-        ).first()
+        ).order_by('created_at').first()
 
         if queryset is None:
             return None, None
@@ -68,7 +68,7 @@ class Common:
     @staticmethod
     def get_variance_and_carry_forward(predicted_cash_inflow: float, collection: float,
                                        capital_inflow: float, hold_cash: float,
-                                       loan_booked: float) -> [float, float, float]:
+                                       loan_booked: float) -> [float, float]:
         """
         :param predicted_cash_inflow: float value for predicted_cash_inflow
         :param collection:  float value for collection
@@ -95,5 +95,28 @@ class Common:
         :return: available cash flow as a float
         """
         available_cash_flow = (predicted_cash_inflow + prev_day_carry_forward + capital_inflow) * (
-                    1 - (hold_cash / 100))
+                1 - (hold_cash / 100))
+        if available_cash_flow is None:
+            return 0.0
         return available_cash_flow
+
+    @staticmethod
+    def get_available_cash_flow_from_nbfc(nbfc: str, due_date: date = None) -> float:
+        """
+        this function provides the available cash_flow_present with a nbfc
+        :param nbfc: a string representing any nbfc
+        :param due_date: due_date present provided for filtering on a particular date if not present using
+        today's date
+        :return: float value for the available cash flow
+        """
+        if due_date is None:
+            due_date = datetime.now()
+        if nbfc:
+            nbfc_instance = NbfcAndDateWiseCashFlowData.objects.filter(
+                nbfc=nbfc,
+                due_date=due_date
+            ).order_by('-created_at').first()
+            if nbfc_instance is None:
+                return 0.0
+            return nbfc_instance.availabe_cash_flow
+        return 0.0
