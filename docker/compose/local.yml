@@ -10,7 +10,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8000:8000"
+      - "8001:8000"
 
 
   db:
@@ -24,7 +24,7 @@ services:
     networks:
       - default
     ports:
-      - "5437:5432"
+      - "5436:5432"
 
 
   redis:

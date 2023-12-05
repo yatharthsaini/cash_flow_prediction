@@ -110,7 +110,7 @@ class CapitalInflowData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     """
     model for storing capital inflow data
     """
-    nbfc = models.ForeignKey(NbfcAndDateWiseCashFlowData, on_delete=models.CASCADE)
+    nbfc = models.CharField(max_length=200)
     capital_inflow = models.FloatField()
 
     class Meta:
@@ -121,7 +121,7 @@ class HoldCashData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     """
     model for storing the hold cash data
     """
-    nbfc = models.ForeignKey(NbfcAndDateWiseCashFlowData, on_delete=models.CASCADE)
+    nbfc = models.CharField(max_length=200)
     hold_cash = models.FloatField()
 
     class Meta:
@@ -132,7 +132,7 @@ class UserRatioData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     """
     model for storing the old to new ratio
     """
-    nbfc = models.ForeignKey(NbfcAndDateWiseCashFlowData, on_delete=models.CASCADE)
+    nbfc = models.CharField(max_length=200)
     old_percentage = models.FloatField()
     new_percentage = models.FloatField()
 
