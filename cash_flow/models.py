@@ -88,19 +88,21 @@ class ProjectionCollectionData(CreatedUpdatedAtMixin):
         ordering = ('-created_at',)
 
 
-class NbfcAndDateWiseCashFlowData(CreatedUpdatedAtMixin):
+class CollectionAndLoanBookedData(CreatedUpdatedAtMixin):
     """
-    model for storing the predicted_cash_inflow, collection amount, loan_booked, available_cash_flow and variance
-    for a particular nbfc and a due date
+    model for storing the real time fields of collection and loan_booked which are real-time stored for
+    a particular nbfc and due_Date
+    collection: a float value
+    loan_booked: a float value
     """
     nbfc = models.CharField(max_length=200)
     due_date = models.DateField()
-    predicted_cash_inflow = models.FloatField(null=True)
     collection = models.FloatField(null=True)
-    carry_forward = models.FloatField(null=True)
-    available_cash_flow = models.FloatField(null=True)
     loan_booked = models.FloatField(null=True)
-    variance = models.FloatField(null=True)
+
+    def __str__(self):
+        return (f"{self.nbfc} with due_date {self.due_date} with collection {self.collection} and "
+                f"loan_booked {self.loan_booked}")
 
     class Meta:
         ordering = ('-created_at',)
@@ -113,6 +115,10 @@ class CapitalInflowData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     nbfc = models.CharField(max_length=200)
     capital_inflow = models.FloatField()
 
+    def __str__(self):
+        return (f"{self.nbfc} with capital_inflow {self.capital_inflow} with start_date {self.start_date}"
+                f"and end_date {self.end_date}")
+
     class Meta:
         ordering = ('-created_at',)
 
@@ -123,6 +129,10 @@ class HoldCashData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     """
     nbfc = models.CharField(max_length=200)
     hold_cash = models.FloatField()
+
+    def __str__(self):
+        return (f"{self.nbfc} with hold_cash {self.hold_cash} with the start_date {self.start_date} "
+                f"and end_date {self.end_date}")
 
     class Meta:
         ordering = ('-created_at',)
@@ -135,6 +145,10 @@ class UserRatioData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
     nbfc = models.CharField(max_length=200)
     old_percentage = models.FloatField()
     new_percentage = models.FloatField()
+
+    def __str__(self):
+        return (f"{self.nbfc} with old_user_percentage as {self.old_percentage} with start_date {self.start_date} and "
+                f"end_date {self.end_date}")
 
     class Meta:
         ordering = ('-created_at',)
