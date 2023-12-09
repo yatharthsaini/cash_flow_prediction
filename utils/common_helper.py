@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from django.db.models import Sum
-from cash_flow.models import (CollectionAndLoanBookedData, ProjectionCollectionData, NbfcWiseCollectionData,
+from cash_flow.models import (CollectionAndLoanBookedData, ProjectionCollectionData,
                               CapitalInflowData, HoldCashData)
 
 
