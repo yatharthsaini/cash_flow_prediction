@@ -1,11 +1,11 @@
 from django.urls import path
-from cash_flow.api.v1.views import (StoreCapitalInflowView, StoreHoldCashView, StoreUserRatio,
-                                    StoreCashFlowView, GetCashFlowView)
+from cash_flow.api.v1.views import (CapitalInflowDataView, HoldCashDataView, UserRatioDataView,
+                                    GetCashFlowView, NBFCBranchView)
 
 urlpatterns = [
-    path('store-capital-inflow/', StoreCapitalInflowView.as_view(), name='store_capital_inflow'),
-    path('store-hold-cash/', StoreHoldCashView.as_view(), name='store_hold_cash'),
-    path('store-user-ratio/', StoreUserRatio.as_view(), name='store_user_ratio'),
-    path('store-cash-flow/', StoreCashFlowView.as_view(), name='store_cash_flow'),
+    path('capital-inflow/', CapitalInflowDataView.as_view(), name='capital_inflow'),
+    path('hold-cash/', HoldCashDataView.as_view(), name='hold_cash'),
+    path('user-ratio/', UserRatioDataView.as_view(), name='user_ratio'),
     path('get-cash-flow/', GetCashFlowView.as_view(), name='get_cash_flow'),
+    path('nbfc-branch/', NBFCBranchView.as_view(), name='nbfc_branch'),
 ]
