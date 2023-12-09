@@ -1,6 +1,7 @@
-from datetime import datetime, date
+from datetime import date, timedelta
 from django.db.models import Sum
-from cash_flow.models import NbfcAndDateWiseCashFlowData, ProjectionCollectionData, NbfcWiseCollectionData
+from cash_flow.models import (CollectionAndLoanBookedData, ProjectionCollectionData, NbfcWiseCollectionData,
+                              CapitalInflowData, HoldCashData)
 
 
 class Common:
@@ -27,61 +28,107 @@ class Common:
         return wace_dict
 
     @staticmethod
-    def get_collection_and_loan_booked(nbfc: str, due_date: date) -> [float, float]:
+    def get_collection_and_loan_booked(nbfc_id: int, due_date: date) -> [float, float]:
         """
         helper function to get the collection amount from the models.NbfcAndDateWiseCashFlowData filtered
-        against the nbfc name and the due_date
-        :param nbfc: a string holding the nbfc name
+        against the nbfc_id name and the due_date
+        :param nbfc_id: an int holding the nbfc_id
         :param due_date: a string holding the due date
         :return: collection param and loan_booked returned from the models.NbfcAndDateWiseCashFlowData
         """
-        queryset = NbfcAndDateWiseCashFlowData.objects.filter(
-            nbfc=nbfc,
+        collection_and_loan_booked_instance = CollectionAndLoanBookedData.objects.filter(
+            nbfc_id=nbfc_id,
             due_date=due_date
         ).order_by('created_at').first()
 
-        if queryset is None:
-            return None, None
-        return queryset.collection, queryset.loan_booked
+        collection = 0.0
+        loan_booked = 0.0
+        if collection:
+            collection = collection_and_loan_booked_instance.collection
+        if loan_booked:
+            loan_booked = collection_and_loan_booked_instance.loan_booked
+        return collection, loan_booked
 
     @staticmethod
-    def get_predicted_cash_inflow(nbfc: str, due_date: date) -> float:
+    def get_predicted_cash_inflow(nbfc_id: int, due_date: date) -> float:
         """
         function to return the predicted cash inflow for a particular nbfc and a particular due_date
-        :param nbfc : a string value storing the nbfc name
+        :param nbfc_id : an int value storing the nbfc_id
         :param due_date : a string value storing the due date
         :return: predicted cash inflow which is the summation of all the predicted amount from
         models.ProjectionCollectionData
         """
-        nbfc_instance = NbfcWiseCollectionData.objects.filter(nbfc=nbfc).first()
-        if nbfc_instance is None:
-            return 0.0
-        nbfc_id = nbfc_instance.id
-        amount = ProjectionCollectionData.objects.filter(
+        projection_collection_instance = ProjectionCollectionData.objects.filter(
             nbfc=nbfc_id,
             due_date=due_date
-        ).aggregate(Sum('amount'))['amount__sum']
-        if amount is None:
-            return 0.0
+        )
+        amount = 0.0
+        if projection_collection_instance:
+            amount = projection_collection_instance.aggregate(Sum('amount'))['amount__sum']
         return amount
 
     @staticmethod
-    def get_variance_and_carry_forward(predicted_cash_inflow: float, collection: float,
-                                       capital_inflow: float, hold_cash: float,
-                                       loan_booked: float) -> [float, float]:
+    def get_prev_day_carry_forward(nbfc_id: int, due_date: date) -> float:
         """
-        :param predicted_cash_inflow: float value for predicted_cash_inflow
+        this function is used for calculating the prev day carry forward using filters of prev day on
+        capital_inflow, hold_cash, loan_booked, and collection
+        :param nbfc_id: an int representing the nbfc_id
+        :param due_date: a date field representing due_date
+        :return: a float val for carry_forward
+        """
+        prev_day = due_date - timedelta(days=1)
+        prev_day_capital_inflow = 0.0
+        prev_day_capital_inflow_instance = CapitalInflowData.objects.filter(nbfc_id=nbfc_id,
+                                                                            start_date__lte=prev_day,
+                                                                            end_date__gte=prev_day).first()
+        if prev_day_capital_inflow_instance:
+            prev_day_capital_inflow = prev_day_capital_inflow_instance.capital_inflow
+
+        prev_day_hold_cash = 0.0
+        prev_day_hold_cash_instance = HoldCashData.objects.filter(nbfc_id=nbfc_id,
+                                                                  start_date__lte=prev_day,
+                                                                  end_date__gte=prev_day).first()
+        if prev_day_hold_cash_instance:
+            prev_day_hold_cash = prev_day_hold_cash_instance.hold_cash
+
+        prev_day_collection = 0.0
+        prev_day_loan_booked = 0.0
+        prev_day_collection_and_loan_booked_instance = CollectionAndLoanBookedData.objects.filter(nbfc_id=nbfc_id,
+                                                                                                  due_date=prev_day)
+
+        if prev_day_collection_and_loan_booked_instance:
+            prev_day_collection = prev_day_collection_and_loan_booked_instance.collection
+            prev_day_loan_booked = prev_day_collection_and_loan_booked_instance.loan_booked
+
+        return Common.get_carry_forward(prev_day_collection, prev_day_capital_inflow,
+                                        prev_day_hold_cash, prev_day_loan_booked)
+
+    @staticmethod
+    def get_carry_forward(collection: float,
+                          capital_inflow: float, hold_cash: float,
+                          loan_booked: float) -> [float]:
+        """
         :param collection:  float value for collection
         :param capital_inflow: float value for capital_inflow
         :param hold_cash: float value for hold_cash
         :param loan_booked: float value for loan_booked
-        :return: variance, carry_forward and available cash flow calculated from given params
+        :return: carry_forward
+        """
+        carry_forward = (collection + capital_inflow) * (1 - (hold_cash / 100)) + loan_booked
+        return carry_forward
+
+    @staticmethod
+    def get_real_time_variance(predicted_cash_inflow: float, collection: float) -> float:
+        """
+        function for returning the real time variance from predicted_cash_inflow and the collection values
+        :param predicted_cash_inflow: float val calculated in the db
+        :param collection: a real time float we are getting from a celery task
+        :return: float value for variance which is also real time as it is a function of collection param
         """
         variance = 0
-        if predicted_cash_inflow and predicted_cash_inflow != 0:
+        if predicted_cash_inflow != 0:
             variance = ((predicted_cash_inflow - collection) / predicted_cash_inflow) / 100
-        carry_forward = (collection + capital_inflow) * (1 - (hold_cash / 100)) + loan_booked
-        return variance, carry_forward
+        return variance
 
     @staticmethod
     def get_available_cash_flow(predicted_cash_inflow: float, prev_day_carry_forward: float,
@@ -100,23 +147,3 @@ class Common:
             return 0.0
         return available_cash_flow
 
-    @staticmethod
-    def get_available_cash_flow_from_nbfc(nbfc: str, due_date: date = None) -> float:
-        """
-        this function provides the available cash_flow_present with a nbfc
-        :param nbfc: a string representing any nbfc
-        :param due_date: due_date present provided for filtering on a particular date if not present using
-        today's date
-        :return: float value for the available cash flow
-        """
-        if due_date is None:
-            due_date = datetime.now()
-        if nbfc:
-            nbfc_instance = NbfcAndDateWiseCashFlowData.objects.filter(
-                nbfc=nbfc,
-                due_date=due_date
-            ).order_by('-created_at').first()
-            if nbfc_instance is None:
-                return 0.0
-            return nbfc_instance.availabe_cash_flow
-        return 0.0
