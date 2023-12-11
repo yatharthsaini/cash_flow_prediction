@@ -1,7 +1,8 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from django.db.models import Sum
 from cash_flow.models import (CollectionAndLoanBookedData, ProjectionCollectionData,
-                              CapitalInflowData, HoldCashData)
+                              CapitalInflowData, HoldCashData, NbfcBranchMaster)
+from cash_flow.external_calls import get_cash_flow_data
 
 
 class Common:
@@ -146,4 +147,56 @@ class Common:
         if available_cash_flow is None:
             return 0.0
         return available_cash_flow
+
+    @staticmethod
+    def get_nbfc_having_lowest_average_for_delay_in_disbursal(available_credit_line_branches: list) -> int:
+        """
+        function that returns the nbfc_id with the lowest delay in disbursal average
+        :param available_credit_line_branches: a list carrying ids representing nbfc_ids
+        :return: an integer representing the nbfc_id
+        """
+        return 1
+
+    def get_nbfc_for_loan_to_be_booked(self, due_date: date = datetime.now(), old_user: bool = True) -> int:
+        """
+        this helper function helps to get the nbfc id for the loan to be booked if the user
+        is new or old, and checking other conditions if there is available credit line or not
+        :param due_date: a date field representing the date field
+        :param old_user: a boolean that tells if a user is new or old
+        :return: the nbfc id as an integer field
+        """
+        branches_list = list(NbfcBranchMaster.objects.values_list('id', flat=True))
+        available_credit_line_branches = []
+        overbooked_data = []
+        str_due_date = due_date.strftime('%Y-%m-%d')
+        for branch_id in branches_list:
+            cash_flow_data = get_cash_flow_data(branch_id, str_due_date).json()
+            available_credit_line = cash_flow_data.get('available_cash_flow', None)
+            if old_user:
+                old_user_percentage = cash_flow_data.get('old_user_percentage', None)
+                available_credit_line = (available_credit_line*old_user_percentage)/100
+            else:
+                new_user_percentage = cash_flow_data.get('new_user_percentage', None)
+                available_credit_line = (available_credit_line*new_user_percentage)/100
+            sanctioned_amount = cash_flow_data.get('loan_booked', None)
+
+            if available_credit_line >= sanctioned_amount:
+                available_credit_line_branches.append(branch_id)
+            else:
+                overbooked_amount = (sanctioned_amount-available_credit_line)
+                over_booked_ratio = overbooked_amount/available_credit_line
+                overbooked_data.append(
+                    {
+                        'id': branch_id,
+                        'ratio': over_booked_ratio
+                    }
+                )
+
+        if len(available_credit_line_branches) != 0:
+            return self.get_nbfc_having_lowest_average_for_delay_in_disbursal(available_credit_line_branches)
+
+        min_overbooked_ratio_branch = min(overbooked_data, key=lambda x: x['ratio'])
+        return min_overbooked_ratio_branch['id']
+
+
 

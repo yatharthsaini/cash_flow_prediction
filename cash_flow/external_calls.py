@@ -75,3 +75,18 @@ def get_loan_booked_data(due_date: str) -> Any:
     }
     response = requests.get(url=url, headers=headers, params=params)
     return response
+
+
+def get_cash_flow_data(nbfc_id: int, due_date: str) -> Any:
+    """
+    external call for getting the cash_flow_data for a particular nbfc_id and due_date
+    """
+    url = settings.CASH_FLOW_URL
+    payload = {
+        'nbfc_id': nbfc_id,
+        'due_date': due_date
+    }
+    response = requests.get(url=url, data=payload)
+    return response
+
+
