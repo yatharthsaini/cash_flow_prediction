@@ -2,8 +2,10 @@ from datetime import datetime, timedelta
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
 
-from cash_flow.external_calls import get_due_amount_response, get_collection_poll_response
-from cash_flow.models import NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster
+from cash_flow.external_calls import (get_due_amount_response, get_collection_poll_response, get_nbfc_list,
+                                      get_collection_amount_response, get_loan_booked_data)
+from cash_flow.models import (NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster,
+                              CollectionAndLoanBookedData)
 from utils.common_helper import Common
 
 
@@ -63,3 +65,73 @@ def populate_wacm():
             if not created:
                 obj.amount = wace_dict[dpd_date_str] * projection_amount
                 obj.save()
+
+
+@shared_task()
+def populate_nbfc_branch_master():
+    """
+    celery task to populate nbfc branch master storing nbfc's with the corresponding id's
+    """
+    nbfc_list_data_response = get_nbfc_list().json()
+    if nbfc_list_data_response:
+        for entry in nbfc_list_data_response['data']:
+            branch_id = entry['id']
+            branch_name = entry['branch_name']
+
+            master_instance = NbfcBranchMaster(branch_name=branch_name)
+            master_instance.id = branch_id
+
+            master_instance.save()
+
+
+@shared_task()
+def populate_collection_amount():
+    """
+    celery task to populate the collection amount in models.CCollectionAndLoanBookedData
+    for a nbfc's for a particular due_date
+    """
+    due_date = datetime.now()
+    str_due_date = due_date.strftime('%Y-%m-%d')
+    collection_amount_response = get_collection_amount_response(str_due_date).json()
+    if collection_amount_response:
+        collection_amount_data = collection_amount_response.get('data', {})
+        for nbfc_id, collection in collection_amount_data.items():
+            collection_instance = CollectionAndLoanBookedData.objects.filter(
+                nbfc_id=nbfc_id,
+                due_date=due_date
+            )
+            if collection_instance:
+                collection_instance.collection = collection
+            else:
+                collection_instance = CollectionAndLoanBookedData(
+                    nbfc_id=nbfc_id,
+                    due_date=due_date,
+                    collection=collection
+                )
+                collection_instance.save()
+
+
+def populate_loan_booked_amount():
+    """
+    celery task to populate the loan_booked amount in models.CCollectionAndLoanBookedData
+    for a nbfc's for a particular due_date
+    """
+    due_date = datetime.now()
+    str_due_date = due_date.strftime('%Y-%m-%d')
+    loan_booked_response = get_loan_booked_data(str_due_date).json()
+    if loan_booked_response:
+        loan_booked_data = loan_booked_response.get('data', {})
+        for nbfc_id, loan_booked in loan_booked_data.items():
+            loan_booked_instance = CollectionAndLoanBookedData.objects.filter(
+                nbfc_id=nbfc_id,
+                due_date=due_date
+            )
+            if loan_booked_instance:
+                loan_booked_instance.loan_booked = loan_booked
+            else:
+                loan_booked_instance = CollectionAndLoanBookedData(
+                    nbfc_id=nbfc_id,
+                    due_date=due_date,
+                    loan_booked=loan_booked
+                )
+                loan_booked_instance.save()

@@ -30,3 +30,48 @@ def get_due_amount_response(due_date: str) -> Any:
     }
     response = requests.get(url=url, headers=headers, params=params)
     return response
+
+
+def get_nbfc_list() -> Any:
+    """
+    external call for getting the nbfc_list with the corresponding id's
+    :return: json response
+    """
+    url = settings.NBFC_LIST_URL
+    headers = {
+        "token": settings.COLLECTION_PREDICTION_TOKEN
+    }
+    response = requests.get(url=url, headers=headers)
+    return response
+
+
+def get_collection_amount_response(due_date: str) -> Any:
+    """
+    external call for getting the collection amount data for a particular due_date
+    :return: json response
+    """
+    url = settings.COLLECTION_AMOUNT_URL
+    headers = {
+        "token": settings.COLLECTION_PREDICTION_TOKEN
+    }
+    params = {
+        "date": due_date
+    }
+    response = requests.get(url=url, headers=headers, params=params)
+    return response
+
+
+def get_loan_booked_data(due_date: str) -> Any:
+    """
+    external call for getting the loan booked amount data for a particular due_date
+    return: json response
+    """
+    url = settings.LOAN_BOOKED_URL
+    headers = {
+        "token": settings.COLLECTION_PREDICTION_TOKEN
+    }
+    params = {
+        "date": due_date
+    }
+    response = requests.get(url=url, headers=headers, params=params)
+    return response
