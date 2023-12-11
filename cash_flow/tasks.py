@@ -111,6 +111,7 @@ def populate_collection_amount():
                 collection_instance.save()
 
 
+@shared_task()
 def populate_loan_booked_amount():
     """
     celery task to populate the loan_booked amount in models.CCollectionAndLoanBookedData
