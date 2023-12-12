@@ -71,7 +71,7 @@ def celery_error_email(func):
                 subject,
                 '',
                 settings.EMAIL_FROM,
-                ['vimal.mahawar@paymeindia.in', 'satish.pandey@paymeindia.in'],
+                [ settings.EMAIL_ONE, settings.EMAIL_TWO],
                 fail_silently=False,
                 html_message=html_message
             )
