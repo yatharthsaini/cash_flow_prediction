@@ -23,6 +23,7 @@ services:
     hostname: docker-cash-flow-prediction-nginx
     container_name: cash_flow_prediction_nginx
     volumes:
+      - static_root:/app/static
       - /var/log/nginx/:/var/log/nginx/
     depends_on:
       - app

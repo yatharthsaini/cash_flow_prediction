@@ -36,6 +36,7 @@ ENVIRONMENT = os.environ.get('ENVIRONMENT')
 DEBUG = True
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split()
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split()
 
 # application definition
 ROOT_APP = ["cash_flow_prediction"]
@@ -224,7 +225,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
-STATIC_ROOT = "static_root"
+STATIC_ROOT = os.path.join(BASE_DIR / "static")
 MEDIA_ROOT = os.path.join(BASE_DIR, "media_root")
 
 
