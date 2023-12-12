@@ -9,7 +9,7 @@ services:
 
   nginx:
     ports:
-      - "8019:80"
+      - "8033:80"
 
 networks:
   default:
