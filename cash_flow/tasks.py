@@ -16,7 +16,6 @@ def populate_json_against_nbfc():
     """
     celery task to populate the models.NbfcWiseCollectionData
     """
-    1/0
     collection_poll_data = get_collection_poll_response().json()
     nbfc_dict = collection_poll_data.get("data", {})
 
