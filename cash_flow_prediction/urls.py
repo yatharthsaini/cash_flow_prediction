@@ -17,11 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.conf import settings
 from django.urls import path, include
+from cash_flow.api.v1.views import SuccessStatus
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('cash-flow/', include('cash_flow.urls')),
+    path('', SuccessStatus.as_view(), name='success-status'),
 ]
 
 if settings.DEBUG:

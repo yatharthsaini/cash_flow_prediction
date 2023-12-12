@@ -1,4 +1,8 @@
+import os
 from datetime import datetime
+
+from rest_framework.permissions import AllowAny
+
 from utils.utils import BaseModelViewSet
 from rest_framework import status
 from rest_framework.response import Response
@@ -338,3 +342,20 @@ class GetCashFlowView(BaseModelViewSet):
             'old_user_percentage': old_user_percentage,
             'new_user_percentage': new_user_percentage
         }, status=status.HTTP_200_OK)
+
+
+class SuccessStatus(APIView):
+    """
+    success status api
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response(
+            {
+                "status": "Success",
+                "ip_address": os.environ.get("PRIVATE_IP_ADDRESS"),
+                "server_node": os.environ.get("SERVER_NODE"),
+            },
+            status=status.HTTP_200_OK,
+        )

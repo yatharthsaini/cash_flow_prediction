@@ -7,13 +7,16 @@ from cash_flow.external_calls import (get_due_amount_response, get_collection_po
 from cash_flow.models import (NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster,
                               CollectionAndLoanBookedData)
 from utils.common_helper import Common
+from cash_flow_prediction.celery import celery_error_email
 
 
 @shared_task()
+@celery_error_email
 def populate_json_against_nbfc():
     """
     celery task to populate the models.NbfcWiseCollectionData
     """
+    1/0
     collection_poll_data = get_collection_poll_response().json()
     nbfc_dict = collection_poll_data.get("data", {})
 
@@ -28,6 +31,7 @@ def populate_json_against_nbfc():
 
 
 @shared_task()
+@celery_error_email
 def populate_wacm():
     """
     celery task to populate the models.ProjectionCollectionData
@@ -68,6 +72,7 @@ def populate_wacm():
 
 
 @shared_task()
+@celery_error_email
 def populate_nbfc_branch_master():
     """
     celery task to populate nbfc branch master storing nbfc's with the corresponding id's
@@ -85,6 +90,7 @@ def populate_nbfc_branch_master():
 
 
 @shared_task()
+@celery_error_email
 def populate_collection_amount():
     """
     celery task to populate the collection amount in models.CCollectionAndLoanBookedData
@@ -112,6 +118,7 @@ def populate_collection_amount():
 
 
 @shared_task()
+@celery_error_email
 def populate_loan_booked_amount():
     """
     celery task to populate the loan_booked amount in models.CCollectionAndLoanBookedData
