@@ -20,14 +20,14 @@ class NBFCBranchView(APIView):
         """
         payload = request.data
         branch_name = payload.get('branch_name', None)
-        branch_id = payload.get('branch_id', None)
+        id = payload.get('id', None)
         delay_in_disbursal = payload.get('delay_in_disbursal', None)
-        if branch_id is None:
+        if id is None:
             return Response({"error": "branch id is required"}, status=status.HTTP_400_BAD_REQUEST)
         if branch_name is None or len(branch_name.strip()) == 0:
             return Response({"error": "branch name is required"}, status=status.HTTP_400_BAD_REQUEST)
         branch_master_instance = NbfcBranchMaster(
-            id=branch_id,
+            id=id,
             branch_name=branch_name,
         )
         if delay_in_disbursal:
