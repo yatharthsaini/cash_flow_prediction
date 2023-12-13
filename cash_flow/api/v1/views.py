@@ -19,12 +19,21 @@ class NBFCBranchView(APIView):
         :param request: branch_name contains the name of nbfc to be stored in the branch master
         """
         payload = request.data
-        branch_name = payload.get('branch_name')
+        branch_name = payload.get('branch_name', None)
+        branch_id = payload.get('branch_id', None)
+        delay_in_disbursal = payload.get('delay_in_disbursal', None)
+        if branch_id is None:
+            return Response({"error": "branch id is required"}, status=status.HTTP_400_BAD_REQUEST)
         if branch_name is None or len(branch_name.strip()) == 0:
-            return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
-        NbfcBranchMaster.objects.create(
-            branch_name=branch_name
+            return Response({"error": "branch name is required"}, status=status.HTTP_400_BAD_REQUEST)
+        branch_master_instance = NbfcBranchMaster(
+            id=branch_id,
+            branch_name=branch_name,
         )
+        if delay_in_disbursal:
+            branch_master_instance.delay_in_disbursal = delay_in_disbursal
+
+        branch_master_instance.save()
         return Response({"message": "NBFC stored to branch master successfully"}, status=status.HTTP_200_OK)
 
     def get(self, request):
