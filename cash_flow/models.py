@@ -38,6 +38,7 @@ class UserPermissionModel(CreatedUpdatedAtMixin):
 class NbfcBranchMaster(CreatedUpdatedAtMixin):
     branch_name = models.CharField(max_length=250)
     is_enable = models.BooleanField(default=True)
+    delay_in_disbursal = models.FloatField(null=True)
 
     def __str__(self):
         return f"{self.branch_name} is the nbfc_name"
