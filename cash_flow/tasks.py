@@ -51,9 +51,14 @@ def populate_wacm():
     nbfc_ids = dict(nbfc_ids.values_list('branch_name', 'id'))
     nbfc_ids_list = list(nbfc_ids.values())
     queryset = NbfcWiseCollectionData.objects.filter(nbfc_id__in=nbfc_ids_list).order_by('created_at')
-    queryset = dict(queryset.values_list('nbfc_id', 'collection_json'))
+    queryset = dict((str(nbfc_id), collection_json) for nbfc_id, collection_json in
+                    queryset.values_list('nbfc_id', 'collection_json'))
+
     for nbfc_id, projection_amount in projection_response_data.items():
-        collection_json = queryset.get(nbfc_id, {})
+        collection_json = {}
+        if nbfc_id in queryset:
+            collection_json = queryset[nbfc_id]
+
         ce_new_json = collection_json.get(dd_str, {}).get("New", {})
         ce_old_json = collection_json.get(dd_str, {}).get("Old", {})
         wace_dict = Common.get_wace_against_due_date(ce_new_json, ce_old_json)
