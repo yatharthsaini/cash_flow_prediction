@@ -4,6 +4,7 @@ celery
 django-celery-beat
 django-celery-results
 Django
+django_smtp_ssl
 django-cors-headers
 django-coverage-plugin
 djangorestframework
