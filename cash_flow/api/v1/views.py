@@ -435,5 +435,38 @@ class NBFCEligibilityViewSet(ModelViewSet):
     """
     serializer_class = NBFCEligibilityCashFlowHeadSerializer
     queryset = NBFCEligibilityCashFlowHead.objects.all()
+    lookup_field = 'nbfc'
+
+    def retrieve(self, request, *args, **kwargs):
+        lookup_value = self.kwargs.get(self.lookup_field)
+        queryset = self.filter_queryset(self.get_queryset())
+        try:
+            obj = queryset.get(**{self.lookup_field: lookup_value})
+        except NBFCEligibilityCashFlowHead.DoesNotExist:
+            return Response(
+                {"detail": f"Object with {self.lookup_field}={lookup_value} does not exist."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        serializer = self.get_serializer(obj)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, *args, **kwargs):
+        lookup_value = self.kwargs.get(self.lookup_field)
+        queryset = self.filter_queryset(self.get_queryset())
+        try:
+            obj = queryset.get(**{self.lookup_field: lookup_value})
+        except NBFCEligibilityCashFlowHead.DoesNotExist:
+            return Response(
+                {"detail": f"Object with {self.lookup_field}={lookup_value} does not exist."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = self.get_serializer(obj, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+
+
 
 
