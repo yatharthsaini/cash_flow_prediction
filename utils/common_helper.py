@@ -44,9 +44,8 @@ class Common:
 
         collection = 0.0
         loan_booked = 0.0
-        if collection:
+        if collection_and_loan_booked_instance:
             collection = collection_and_loan_booked_instance.collection
-        if loan_booked:
             loan_booked = collection_and_loan_booked_instance.loan_booked
         return collection, loan_booked
 
