@@ -275,6 +275,7 @@ EMAIL_FROM = os.environ.get("EMAIL_FROM")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 EMAIL_ONE = os.environ.get('EMAIL_ONE')
 EMAIL_TWO = os.environ.get('EMAIL_TWO')
+EMAIL_LIST = os.environ.get('EMAIL_LIST').split(" ")
 
 
 # apis related to collection efficiency data
