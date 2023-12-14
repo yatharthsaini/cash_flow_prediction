@@ -1,13 +1,14 @@
 import os
 from datetime import datetime
-
 from rest_framework.permissions import AllowAny
-
+from rest_framework.viewsets import ModelViewSet
 from utils.utils import BaseModelViewSet
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from cash_flow.models import (HoldCashData, CapitalInflowData, UserRatioData, NbfcBranchMaster)
+from cash_flow.models import (HoldCashData, CapitalInflowData, UserRatioData, NbfcBranchMaster,
+                              NBFCEligibilityCashFlowHead)
+from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer
 from utils.common_helper import Common
 
 
@@ -368,3 +369,71 @@ class SuccessStatus(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class BookNBFCView(APIView):
+
+    def get(self, request):
+        """
+        :param request: will contain the user_id, loan_type, cibil_score, loan_tenure, loan_amount
+        :return: the nbfc_id to be booked for the loan
+        """
+        payload = request.data
+        user_id = payload.get('user_id', None)
+        loan_type = payload.get('loan_type', None)
+        old_user = payload.get('old_user', True)
+        old_nbfc_id = payload.get('old_nbfc_id', None)
+        cibil_score = payload.get('cibil_score', None)
+        loan_tenure = payload.get('loan_tenure', None)
+        loan_tenure_unit = payload.get('loan_tenure_unit', None)
+        loan_amount = payload.get('loan_amount', None)
+
+        if user_id is None or loan_type is None or cibil_score is None or loan_tenure is None or loan_amount is None\
+                or loan_tenure_unit is None or old_nbfc_id is None:
+            return Response({'error': 'one of the fields is missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+        eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
+            loan_type=loan_type,
+            min_cibil_score__lte=cibil_score,
+            min_loan_tenure__lte=loan_tenure,
+            max_loan_tenure__gte=loan_tenure,
+            min_loan_amount__lte=loan_amount,
+            max_loan_amount__gte=loan_amount,
+            should_check=True
+        )
+
+        if old_nbfc_id and old_nbfc_id == 27:
+            """
+            the case representing the unity bank customer
+            """
+            return Response({
+                'message': 'Nbfc is not changed as it is already a unity bank customer'
+            }, status=status.HTTP_200_OK)
+
+        eligible_branches_list = list(eligibility_queryset.values('id').distinct())
+
+        common_instance = Common()
+        updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(branches_list=eligible_branches_list,
+                                                                         old_user=old_user)
+
+        if updated_nbfc_id == -1:
+            return Response({'error': 'something went wrong'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            'data': {
+                'user_id': user_id,
+                'old_nbfc_id': old_nbfc_id,
+                'updated_nbfc_id': updated_nbfc_id,
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class NBFCEligibilityViewSet(ModelViewSet):
+    """
+    Base Model for serializers.NBFCEligibilityCashFlowHeadSerializer which is further inherited from
+    models.NBFCEligibilityCashFlowHead
+    """
+    serializer_class = NBFCEligibilityCashFlowHeadSerializer
+    queryset = NBFCEligibilityCashFlowHead.objects.all()
+
+
