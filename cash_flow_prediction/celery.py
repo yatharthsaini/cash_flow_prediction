@@ -71,7 +71,7 @@ def celery_error_email(func):
                 subject,
                 '',
                 settings.EMAIL_FROM,
-                [ settings.EMAIL_ONE, settings.EMAIL_TWO],
+                settings.CELERY_ERROR_EMAIL_LIST,
                 fail_silently=False,
                 html_message=html_message
             )

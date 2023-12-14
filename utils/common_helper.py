@@ -44,9 +44,8 @@ class Common:
 
         collection = 0.0
         loan_booked = 0.0
-        if collection:
+        if collection_and_loan_booked_instance:
             collection = collection_and_loan_booked_instance.collection
-        if loan_booked:
             loan_booked = collection_and_loan_booked_instance.loan_booked
         return collection, loan_booked
 
@@ -62,7 +61,7 @@ class Common:
         projection_collection_instance = ProjectionCollectionData.objects.filter(
             nbfc=nbfc_id,
             due_date=due_date
-        )
+        ).first()
         amount = 0.0
         if projection_collection_instance:
             amount = projection_collection_instance.aggregate(Sum('amount'))['amount__sum']
@@ -95,7 +94,7 @@ class Common:
         prev_day_collection = 0.0
         prev_day_loan_booked = 0.0
         prev_day_collection_and_loan_booked_instance = CollectionAndLoanBookedData.objects.filter(nbfc_id=nbfc_id,
-                                                                                                  due_date=prev_day)
+                                                                                                  due_date=prev_day).first()
 
         if prev_day_collection_and_loan_booked_instance:
             prev_day_collection = prev_day_collection_and_loan_booked_instance.collection
@@ -155,17 +154,30 @@ class Common:
         :param available_credit_line_branches: a list carrying ids representing nbfc_ids
         :return: an integer representing the nbfc_id
         """
-        return 1
+        lowest_delay = float('inf')  # Initialize with positive infinity
+        lowest_delay_nbfc_id = -1
 
-    def get_nbfc_for_loan_to_be_booked(self, due_date: date = datetime.now(), old_user: bool = True) -> int:
+        for nbfc_id in available_credit_line_branches:
+            # Assuming NbfcBranchMaster is your model class
+            master_branch_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
+
+            if (master_branch_instance.delay_in_disbursal is not None and
+                    master_branch_instance.delay_in_disbursal < lowest_delay):
+                lowest_delay = master_branch_instance.delay_in_disbursal
+                lowest_delay_nbfc_id = nbfc_id
+
+        return lowest_delay_nbfc_id
+
+    def get_nbfc_for_loan_to_be_booked(self, branches_list: list, due_date: date = datetime.now(),
+                                       old_user: bool = True) -> int:
         """
         this helper function helps to get the nbfc id for the loan to be booked if the user
         is new or old, and checking other conditions if there is available credit line or not
         :param due_date: a date field representing the date field
         :param old_user: a boolean that tells if a user is new or old
-        :return: the nbfc id as an integer field
+        :param branches_list: a list containing nbfc_id's representing eligible branches
+        :return: the nbfc id as an integer field, it will return -1 in case of no nbfc is found
         """
-        branches_list = list(NbfcBranchMaster.objects.values_list('id', flat=True))
         available_credit_line_branches = []
         overbooked_data = []
         str_due_date = due_date.strftime('%Y-%m-%d')
@@ -184,19 +196,22 @@ class Common:
                 available_credit_line_branches.append(branch_id)
             else:
                 overbooked_amount = (sanctioned_amount-available_credit_line)
-                over_booked_ratio = overbooked_amount/available_credit_line
-                overbooked_data.append(
-                    {
-                        'id': branch_id,
-                        'ratio': over_booked_ratio
-                    }
-                )
+                if available_credit_line != 0:
+                    over_booked_ratio = overbooked_amount/available_credit_line
+                    overbooked_data.append(
+                        {
+                            'id': branch_id,
+                            'ratio': over_booked_ratio
+                        }
+                    )
 
         if len(available_credit_line_branches) != 0:
             return self.get_nbfc_having_lowest_average_for_delay_in_disbursal(available_credit_line_branches)
 
-        min_overbooked_ratio_branch = min(overbooked_data, key=lambda x: x['ratio'])
-        return min_overbooked_ratio_branch['id']
+        if len(overbooked_data) != 0:
+            min_overbooked_ratio_branch = min(overbooked_data, key=lambda x: x['ratio'])
+            return min_overbooked_ratio_branch['id']
+        return -1
 
 
 
