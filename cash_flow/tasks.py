@@ -101,11 +101,13 @@ def populate_nbfc_branch_master():
             delay_in_disbursal = entry.get('delay_in_disbursal', None)
 
             if branch_id and branch_name:
-                master_instance = NbfcBranchMaster(branch_name=branch_name)
-                master_instance.id = branch_id
-                if delay_in_disbursal:
-                    master_instance.delay_in_disbursal = delay_in_disbursal
+                master_instance = NbfcBranchMaster.objects.filter(id=branch_id, branch_name=branch_name).first()
 
+                if master_instance:
+                    master_instance.delay_in_disbursal = delay_in_disbursal
+                else:
+                    master_instance = NbfcBranchMaster(id=branch_id, branch_name=branch_name,
+                                                       delay_in_disbursal=delay_in_disbursal)
                 master_instance.save()
 
 
