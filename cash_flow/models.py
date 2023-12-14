@@ -175,3 +175,9 @@ class NBFCEligibilityCashFlowHead(CreatedUpdatedAtMixin):
     min_loan_amount = models.FloatField()
     max_loan_amount = models.FloatField()
     should_check = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.nbfc} is the nbfc_id of the branch"
+
+    class Meta:
+        ordering = ('-created_at',)
