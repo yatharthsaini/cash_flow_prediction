@@ -30,7 +30,12 @@ services:
 
 networks:
   default:
+    driver: bridge
     name: cash_flow_prediction_network
+    ipam:
+      config:
+        - subnet: 60.0.3.0/24
+
 
 volumes:
   static_root:
