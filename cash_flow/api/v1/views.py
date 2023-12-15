@@ -439,6 +439,13 @@ class BookNBFCView(APIView):
                     'message': 'no change in nbfc is required'
                 }, status=status.HTTP_200_OK)
 
+        if loan_tenure_unit == 'days':
+            loan_tenure = loan_tenure
+        elif loan_tenure_unit == 'months':
+            loan_tenure = loan_tenure * 30  # Assuming an average of 30 days in a month
+        elif loan_tenure_unit == 'years':
+            loan_tenure = loan_tenure * 365  # Assuming 365 days in a year
+
         eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
             loan_type=loan_type,
             min_cibil_score__lte=cibil_score,
