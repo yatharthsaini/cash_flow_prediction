@@ -289,3 +289,6 @@ CASH_FLOW_URL = os.environ.get('CASH_FLOW_URL')
 
 # Project Name
 PROJECT_NAME = os.environ.get('PROJECT_NAME')
+
+# NBFC's that does not update the nbfc to be booked while cash flow
+NO_CHANGE_NBFC_LIST = os.environ.get('NO_CHANGE_NBFC_LIST')

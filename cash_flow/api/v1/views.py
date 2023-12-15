@@ -6,9 +6,11 @@ from utils.utils import BaseModelViewSet
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.conf import settings
 from cash_flow.models import (HoldCashData, CapitalInflowData, UserRatioData, NbfcBranchMaster,
                               NBFCEligibilityCashFlowHead)
 from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer
+from cash_flow.external_calls import get_cash_flow_data
 from utils.common_helper import Common
 
 
@@ -382,15 +384,60 @@ class BookNBFCView(APIView):
         user_id = payload.get('user_id', None)
         loan_type = payload.get('loan_type', None)
         old_user = payload.get('old_user', True)
-        old_nbfc_id = payload.get('old_nbfc_id', None)
+        assigned_nbfc_id = payload.get('old_nbfc_id', None)
         cibil_score = payload.get('cibil_score', None)
         loan_tenure = payload.get('loan_tenure', None)
         loan_tenure_unit = payload.get('loan_tenure_unit', None)
         loan_amount = payload.get('loan_amount', None)
+        due_date = payload.get('due_date', None)
+        if due_date:
+            due_date = datetime.strptime(due_date, "%Y-%m-%d")
+        else:
+            due_date = datetime.now()
 
-        if user_id is None or loan_type is None or cibil_score is None or loan_tenure is None or loan_amount is None\
-                or loan_tenure_unit is None or old_nbfc_id is None:
+        if user_id is None or loan_type is None or cibil_score is None or loan_tenure is None or loan_amount is None \
+                or loan_tenure_unit is None:
             return Response({'error': 'one of the fields is missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if assigned_nbfc_id:
+            hold_cash = 0.0
+            hold_cash_instance = HoldCashData.objects.filter(nbfc_id=assigned_nbfc_id,
+                                                             start_date__lte=due_date,
+                                                             end_date__gte=due_date).first()
+            if hold_cash_instance:
+                hold_cash = hold_cash_instance.hold_cash
+            if hold_cash == 100:
+                return Response({
+                    'data': {
+                        'user_id': user_id,
+                        'assigned_nbfc': assigned_nbfc_id
+                    },
+                    'message': 'No change in nbfc is required'
+                }, status=status.HTTP_200_OK)
+
+            if assigned_nbfc_id in settings.NO_CHANGE_NBFC_LIST:
+                """
+                nbfc will not be changed if already assigned for some cases like Unity Bank
+                """
+                return Response({
+                    'data': {
+                        'user_id': user_id,
+                        'assigned_nbfc': assigned_nbfc_id
+                    },
+                    'message': 'No change in  nbfc is required'
+                }, status=status.HTTP_200_OK)
+
+            str_due_date = due_date.strftime('%Y-%m-%d')
+            cash_flow_data = get_cash_flow_data(assigned_nbfc_id, str_due_date).json()
+            available_credit_line = cash_flow_data.get('available_cash_flow', None)
+            if available_credit_line >= loan_amount:
+                return Response({
+                    'data': {
+                        'user_id': user_id,
+                        "assigned_nbfc": assigned_nbfc_id
+                    },
+                    'message': 'no change in nbfc is required'
+                }, status=status.HTTP_200_OK)
 
         eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
             loan_type=loan_type,
@@ -401,20 +448,12 @@ class BookNBFCView(APIView):
             max_loan_amount__gte=loan_amount,
             should_check=True
         )
-
-        if old_nbfc_id and old_nbfc_id == 27:
-            """
-            the case representing the unity bank customer
-            """
-            return Response({
-                'message': 'Nbfc is not changed as it is already a unity bank customer'
-            }, status=status.HTTP_200_OK)
-
         eligible_branches_list = list(eligibility_queryset.values('id').distinct())
 
         common_instance = Common()
         updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(branches_list=eligible_branches_list,
-                                                                         old_user=old_user)
+                                                                         old_user=old_user,
+                                                                         sanctioned_amount=loan_amount)
 
         if updated_nbfc_id == -1:
             return Response({'error': 'something went wrong'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -422,9 +461,10 @@ class BookNBFCView(APIView):
         return Response({
             'data': {
                 'user_id': user_id,
-                'old_nbfc_id': old_nbfc_id,
+                'assigned_nbfc': assigned_nbfc_id,
                 'updated_nbfc_id': updated_nbfc_id,
-            }
+            },
+            'message': 'nbfc is updated for the user'
         }, status=status.HTTP_200_OK)
 
 
@@ -464,9 +504,3 @@ class NBFCEligibilityViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-
-
-
-
-

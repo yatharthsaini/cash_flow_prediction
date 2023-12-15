@@ -168,7 +168,8 @@ class Common:
 
         return lowest_delay_nbfc_id
 
-    def get_nbfc_for_loan_to_be_booked(self, branches_list: list, due_date: date = datetime.now(),
+    def get_nbfc_for_loan_to_be_booked(self, branches_list: list, sanctioned_amount: float,
+                                       due_date: date = datetime.now(),
                                        old_user: bool = True) -> int:
         """
         this helper function helps to get the nbfc id for the loan to be booked if the user
@@ -176,6 +177,7 @@ class Common:
         :param due_date: a date field representing the date field
         :param old_user: a boolean that tells if a user is new or old
         :param branches_list: a list containing nbfc_id's representing eligible branches
+        :param sanctioned_amount: a float representing sanctioned/applied amount
         :return: the nbfc id as an integer field, it will return -1 in case of no nbfc is found
         """
         available_credit_line_branches = []
@@ -190,7 +192,6 @@ class Common:
             else:
                 new_user_percentage = cash_flow_data.get('new_user_percentage', None)
                 available_credit_line = (available_credit_line*new_user_percentage)/100
-            sanctioned_amount = cash_flow_data.get('loan_booked', None)
 
             if available_credit_line >= sanctioned_amount:
                 available_credit_line_branches.append(branch_id)
