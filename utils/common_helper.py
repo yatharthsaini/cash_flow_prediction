@@ -158,7 +158,6 @@ class Common:
         lowest_delay_nbfc_id = -1
 
         for nbfc_id in available_credit_line_branches:
-            # Assuming NbfcBranchMaster is your model class
             master_branch_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
 
             if (master_branch_instance.delay_in_disbursal is not None and
@@ -185,26 +184,27 @@ class Common:
         str_due_date = due_date.strftime('%Y-%m-%d')
         for branch_id in branches_list:
             cash_flow_data = get_cash_flow_data(branch_id, str_due_date).json()
-            available_credit_line = cash_flow_data.get('available_cash_flow', None)
-            if old_user:
-                old_user_percentage = cash_flow_data.get('old_user_percentage', None)
-                available_credit_line = (available_credit_line*old_user_percentage)/100
-            else:
-                new_user_percentage = cash_flow_data.get('new_user_percentage', None)
-                available_credit_line = (available_credit_line*new_user_percentage)/100
+            if cash_flow_data:
+                available_credit_line = cash_flow_data.get('available_cash_flow', None)
+                if old_user:
+                    old_user_percentage = cash_flow_data.get('old_user_percentage', None)
+                    available_credit_line = (available_credit_line*old_user_percentage)/100
+                else:
+                    new_user_percentage = cash_flow_data.get('new_user_percentage', None)
+                    available_credit_line = (available_credit_line*new_user_percentage)/100
 
-            if available_credit_line >= sanctioned_amount:
-                available_credit_line_branches.append(branch_id)
-            else:
-                overbooked_amount = (sanctioned_amount-available_credit_line)
-                if available_credit_line != 0:
-                    over_booked_ratio = overbooked_amount/available_credit_line
-                    overbooked_data.append(
-                        {
-                            'id': branch_id,
-                            'ratio': over_booked_ratio
-                        }
-                    )
+                if available_credit_line >= sanctioned_amount:
+                    available_credit_line_branches.append(branch_id)
+                else:
+                    overbooked_amount = (sanctioned_amount-available_credit_line)
+                    if available_credit_line != 0:
+                        over_booked_ratio = overbooked_amount/available_credit_line
+                        overbooked_data.append(
+                            {
+                                'id': branch_id,
+                                'ratio': over_booked_ratio
+                            }
+                        )
 
         if len(available_credit_line_branches) != 0:
             return self.get_nbfc_having_lowest_average_for_delay_in_disbursal(available_credit_line_branches)

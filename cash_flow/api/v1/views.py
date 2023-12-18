@@ -415,16 +415,19 @@ class BookNBFCView(APIView):
         loan_tenure = payload.get('loan_tenure', None)
         loan_tenure_unit = payload.get('loan_tenure_unit', None)
         loan_amount = payload.get('loan_amount', None)
+        # checking if due_date not present then taking current date
         due_date = payload.get('due_date', None)
         if due_date:
             due_date = datetime.strptime(due_date, "%Y-%m-%d")
         else:
             due_date = datetime.now()
 
+        # missing fields check
         if user_id is None or loan_type is None or cibil_score is None or loan_tenure is None or loan_amount is None \
                 or loan_tenure_unit is None:
             return Response({'error': 'one of the fields is missing'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # case when a user has already assigned nbfc
         if assigned_nbfc_id:
             hold_cash = 0.0
             hold_cash_instance = HoldCashData.objects.filter(nbfc_id=assigned_nbfc_id,
@@ -483,6 +486,9 @@ class BookNBFCView(APIView):
             should_check=True
         )
         eligible_branches_list = list(eligibility_queryset.values('id').distinct())
+        if len(eligible_branches_list) == 0:
+            return Response({"message": "No branch is eligible for nbfc updation"},
+                            status=status.HTTP_404_NOT_FOUND)
 
         common_instance = Common()
         updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(branches_list=eligible_branches_list,
