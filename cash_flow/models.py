@@ -167,8 +167,12 @@ class NBFCEligibilityCashFlowHead(CreatedUpdatedAtMixin):
     """
     model for storing the NBFC eligibility parameters
     """
+    LOAN_TYPE_CHOICES = (
+        ('PD', 'PAYDAY'),
+        ('EMI', 'PERSONAL_LOAN')
+    )
     nbfc = models.ForeignKey(NbfcBranchMaster, on_delete=models.CASCADE)
-    loan_type = models.CharField()
+    loan_type = models.CharField(max_length=3, choices=LOAN_TYPE_CHOICES)
     min_cibil_score = models.IntegerField()
     min_loan_tenure = models.DurationField()
     max_loan_tenure = models.DurationField()

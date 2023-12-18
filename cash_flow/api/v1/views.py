@@ -403,7 +403,8 @@ class BookNBFCView(APIView):
 
     def get(self, request):
         """
-        :param request: will contain the user_id, loan_type, cibil_score, loan_tenure, loan_amount
+        :param request: will contain the user_id, loan_type, cibil_score, loan_tenure, loan_amount, loan_tenure, unit,
+        assigned_nbfc_id, old_user
         :return: the nbfc_id to be booked for the loan
         """
         payload = request.data
@@ -485,6 +486,7 @@ class BookNBFCView(APIView):
             max_loan_amount__gte=loan_amount,
             should_check=True
         )
+
         eligible_branches_list = list(eligibility_queryset.values('id').distinct())
         if len(eligible_branches_list) == 0:
             return Response({"message": "No branch is eligible for nbfc updation"},
