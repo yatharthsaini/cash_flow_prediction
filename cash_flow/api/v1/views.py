@@ -532,13 +532,13 @@ class NBFCEligibilityViewSet(ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         nbfc = request.data.get('nbfc')
+        loan_type = request.data.get('loan_type')
 
-        # Check if an object with the same nbfc value already exists
-        if NBFCEligibilityCashFlowHead.objects.filter(nbfc=nbfc).exists():
-            return Response(
-                {"detail": f"Object with nbfc={nbfc} already exists."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Check if an object with the same nbfc and loan_type already exists
+        existing_instance = NBFCEligibilityCashFlowHead.objects.filter(nbfc=nbfc, loan_type=loan_type).first()
+        if existing_instance:
+            serializer = self.get_serializer(existing_instance)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
