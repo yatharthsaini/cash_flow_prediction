@@ -341,7 +341,8 @@ class GetCashFlowView(BaseModelViewSet):
         if hold_cash_instance:
             hold_cash = hold_cash_instance.hold_cash
 
-        old_user_percentage = 0.0
+        # by default taking old user percentage as 100 and new user percentage as 0 if user ratio data not present
+        old_user_percentage = 100.0
         new_user_percentage = 0.0
         user_ratio_instance = UserRatioData.objects.filter(nbfc_id=nbfc_id,
                                                            start_date__lte=due_date,
@@ -487,7 +488,9 @@ class BookNBFCView(APIView):
             should_check=True
         )
 
-        eligible_branches_list = list(eligibility_queryset.values('id').distinct())
+        eligible_branches_list = list(eligibility_queryset.values('nbfc').distinct())
+        eligible_branches_list = [item['nbfc'] for item in eligible_branches_list]
+
         if len(eligible_branches_list) == 0:
             return Response({"message": "No branch is eligible for nbfc updation"},
                             status=status.HTTP_404_NOT_FOUND)
