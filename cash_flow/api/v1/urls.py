@@ -9,7 +9,7 @@ urlpatterns = [
     path('get-cash-flow/', GetCashFlowView.as_view(), name='get_cash_flow'),
     path('nbfc-branch/', NBFCBranchView.as_view(), name='nbfc_branch'),
     path('book-nbfc/', BookNBFCView.as_view(), name='book_nbfc'),
-    path('nbfc-eligibility/<int:pk>/', NBFCEligibilityViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update'}),
+    path('nbfc-eligibility/<int:pk>/', NBFCEligibilityViewSet.as_view({'patch': 'partial_update'}),
          name='nbfc_eligibility_detail'),
     path('nbfc-eligibility/', NBFCEligibilityViewSet.as_view({'get': 'list', 'post': 'create'}),
          name='nbfc_eligibility')

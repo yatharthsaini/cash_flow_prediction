@@ -1,5 +1,9 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.core.cache import cache
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import cache_page
+
 from rest_framework.permissions import AllowAny
 from rest_framework.viewsets import ModelViewSet
 from utils.utils import BaseModelViewSet
@@ -311,7 +315,17 @@ class GetCashFlowView(BaseModelViewSet):
             return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
 
         predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
-        collection, loan_booked = Common.get_collection_and_loan_booked(nbfc_id, due_date)
+
+        # cache check for loan booked param
+        loan_booked_key = f"loan_booked_{nbfc_id}_{due_date}"
+        cached_loan_booked = cache.get(loan_booked_key)
+        if cached_loan_booked:
+            loan_booked = cached_loan_booked
+        else:
+            loan_booked = Common.get_collection_and_loan_booked(nbfc_id, due_date)[1]
+            cache.set(loan_booked_key, loan_booked, timeout=60 * 60 * 24)
+
+        collection = Common.get_collection_and_loan_booked(nbfc_id, due_date)[0]
 
         capital_inflow = 0.0
         capital_inflow_instance = CapitalInflowData.objects.filter(nbfc_id=nbfc_id,
@@ -338,8 +352,20 @@ class GetCashFlowView(BaseModelViewSet):
 
         carry_forward = Common.get_carry_forward(collection, capital_inflow, hold_cash, loan_booked)
         prev_day_carry_forward = Common.get_prev_day_carry_forward(nbfc_id, due_date)
-        available_cash_flow = Common.get_available_cash_flow(predicted_cash_inflow, prev_day_carry_forward,
-                                                             capital_inflow, hold_cash)
+
+        # cache check for available_cash_flow
+        available_cash_flow_key = f"available_cash_flow_{nbfc_id}_{due_date}"
+        cached_available_cash_flow = cache.get(available_cash_flow_key)
+
+        if cached_available_cash_flow is not None:
+            # Use cached value if available
+            available_cash_flow = cached_available_cash_flow
+        else:
+            # Calculate and store in cache
+            available_cash_flow = Common.get_available_cash_flow(
+                predicted_cash_inflow, prev_day_carry_forward, capital_inflow, hold_cash
+            )
+            cache.set(available_cash_flow_key, available_cash_flow, timeout=60 * 60 * 24)
         variance = Common.get_real_time_variance(predicted_cash_inflow, collection)
 
         return Response({
@@ -412,7 +438,7 @@ class BookNBFCView(APIView):
                         'user_id': user_id,
                         'assigned_nbfc': assigned_nbfc_id
                     },
-                    'message': 'No change in nbfc is required'
+                    'message': 'No change in nbfc is required because of 100 percent hold cash of assigned nbfc'
                 }, status=status.HTTP_200_OK)
 
             if assigned_nbfc_id in settings.NO_CHANGE_NBFC_LIST:
@@ -424,7 +450,7 @@ class BookNBFCView(APIView):
                         'user_id': user_id,
                         'assigned_nbfc': assigned_nbfc_id
                     },
-                    'message': 'No change in  nbfc is required'
+                    'message': 'No change in  nbfc is required because assigned nbfc is listed in no-update nbfc list'
                 }, status=status.HTTP_200_OK)
 
             str_due_date = due_date.strftime('%Y-%m-%d')
@@ -436,15 +462,16 @@ class BookNBFCView(APIView):
                         'user_id': user_id,
                         "assigned_nbfc": assigned_nbfc_id
                     },
-                    'message': 'no change in nbfc is required'
+                    'message': 'no change in nbfc is required because of already available credit line with the '
+                               'assigned nbfc'
                 }, status=status.HTTP_200_OK)
 
         if loan_tenure_unit == 'days':
-            loan_tenure = loan_tenure
+            loan_tenure = timedelta(loan_tenure)
         elif loan_tenure_unit == 'months':
-            loan_tenure = loan_tenure * 30  # Assuming an average of 30 days in a month
+            loan_tenure = timedelta(loan_tenure * 30)  # Assuming an average of 30 days in a month
         elif loan_tenure_unit == 'years':
-            loan_tenure = loan_tenure * 365  # Assuming 365 days in a year
+            loan_tenure = timedelta(loan_tenure * 365)  # Assuming 365 days in a year
 
         eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
             loan_type=loan_type,
@@ -484,18 +511,34 @@ class NBFCEligibilityViewSet(ModelViewSet):
     queryset = NBFCEligibilityCashFlowHead.objects.all()
     lookup_field = 'nbfc'
 
-    def retrieve(self, request, *args, **kwargs):
-        lookup_value = self.kwargs.get(self.lookup_field)
-        queryset = self.filter_queryset(self.get_queryset())
-        try:
-            obj = queryset.get(**{self.lookup_field: lookup_value})
-        except NBFCEligibilityCashFlowHead.DoesNotExist:
-            return Response(
-                {"detail": f"Object with {self.lookup_field}={lookup_value} does not exist."},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        serializer = self.get_serializer(obj)
+    def list(self, request, *args, **kwargs):
+        nbfc_value = request.data.get('nbfc', None)
+
+        if nbfc_value is not None:
+            # If nbfc is provided in the payload, filter the queryset
+            queryset = self.filter_queryset(self.get_queryset()).filter(nbfc=nbfc_value)
+        else:
+            # If nbfc is not provided, get all objects
+            queryset = self.filter_queryset(self.get_queryset())
+
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        nbfc = request.data.get('nbfc')
+
+        # Check if an object with the same nbfc value already exists
+        if NBFCEligibilityCashFlowHead.objects.filter(nbfc=nbfc).exists():
+            return Response(
+                {"detail": f"Object with nbfc={nbfc} already exists."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, *args, **kwargs):
         lookup_value = self.kwargs.get(self.lookup_field)
