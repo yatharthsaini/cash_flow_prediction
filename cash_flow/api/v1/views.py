@@ -1,8 +1,6 @@
 import os
 from datetime import datetime, timedelta
 from django.core.cache import cache
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
 
 from rest_framework.permissions import AllowAny
 from rest_framework.viewsets import ModelViewSet
