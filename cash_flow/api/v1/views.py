@@ -431,6 +431,18 @@ class BookNBFCView(APIView):
 
         # case when a user has already assigned nbfc
         if assigned_nbfc_id:
+            if str(assigned_nbfc_id) in settings.NO_CHANGE_NBFC_LIST:
+                """
+                nbfc will not be changed if already assigned for some cases like Unity Bank
+                """
+                return Response({
+                    'data': {
+                        'user_id': user_id,
+                        'assigned_nbfc': assigned_nbfc_id
+                    },
+                    'message': 'No change in  nbfc is required because assigned nbfc is listed in no-update nbfc list'
+                }, status=status.HTTP_200_OK)
+
             hold_cash = 0.0
             hold_cash_instance = HoldCashData.objects.filter(nbfc_id=assigned_nbfc_id,
                                                              start_date__lte=due_date,
@@ -444,18 +456,6 @@ class BookNBFCView(APIView):
                         'assigned_nbfc': assigned_nbfc_id
                     },
                     'message': 'No change in nbfc is required because of 100 percent hold cash of assigned nbfc'
-                }, status=status.HTTP_200_OK)
-
-            if assigned_nbfc_id in settings.NO_CHANGE_NBFC_LIST:
-                """
-                nbfc will not be changed if already assigned for some cases like Unity Bank
-                """
-                return Response({
-                    'data': {
-                        'user_id': user_id,
-                        'assigned_nbfc': assigned_nbfc_id
-                    },
-                    'message': 'No change in  nbfc is required because assigned nbfc is listed in no-update nbfc list'
                 }, status=status.HTTP_200_OK)
 
             str_due_date = due_date.strftime('%Y-%m-%d')
