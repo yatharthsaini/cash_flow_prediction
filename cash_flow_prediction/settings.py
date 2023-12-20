@@ -246,10 +246,20 @@ celery.config_from_object('')
 
 
 # django setting.
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+#         'LOCATION': 'my_cache_table',
+#     }
+# }
+
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'LOCATION': 'my_cache_table',
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.environ.get('REDIS_URL'),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
     }
 }
 
@@ -290,3 +300,7 @@ CASH_FLOW_URL = os.environ.get('CASH_FLOW_URL')
 
 # Project Name
 PROJECT_NAME = os.environ.get('PROJECT_NAME')
+
+# NBFC's that does not update the nbfc to be booked while cash flow
+NO_CHANGE_NBFC_LIST = os.environ.get('NO_CHANGE_NBFC_LIST').split(" ")
+

@@ -161,3 +161,27 @@ class UserRatioData(CreatedUpdatedAtMixin, SetForFutureDateMixin):
 
     class Meta:
         ordering = ('-created_at',)
+
+
+class NBFCEligibilityCashFlowHead(CreatedUpdatedAtMixin):
+    """
+    model for storing the NBFC eligibility parameters
+    """
+    LOAN_TYPE_CHOICES = (
+        ('PD', 'PAYDAY'),
+        ('EMI', 'PERSONAL_LOAN')
+    )
+    nbfc = models.ForeignKey(NbfcBranchMaster, on_delete=models.CASCADE)
+    loan_type = models.CharField(max_length=3, choices=LOAN_TYPE_CHOICES)
+    min_cibil_score = models.IntegerField()
+    min_loan_tenure = models.DurationField()
+    max_loan_tenure = models.DurationField()
+    min_loan_amount = models.FloatField()
+    max_loan_amount = models.FloatField()
+    should_check = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.nbfc} is the nbfc_id of the branch"
+
+    class Meta:
+        ordering = ('-created_at',)
