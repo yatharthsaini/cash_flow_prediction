@@ -243,15 +243,6 @@ TOKEN_AUTHENTICATION_URL = os.environ.get('PAYME_BASE_URL') + os.environ.get('TO
 celery = Celery('cash_flow_prediction')
 celery.config_from_object('')
 
-
-# django setting.
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-#         'LOCATION': 'my_cache_table',
-#     }
-# }
-
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -302,4 +293,3 @@ PROJECT_NAME = os.environ.get('PROJECT_NAME')
 
 # NBFC's that does not update the nbfc to be booked while cash flow
 NO_CHANGE_NBFC_LIST = os.environ.get('NO_CHANGE_NBFC_LIST').split(" ")
-
