@@ -317,7 +317,8 @@ class GetCashFlowView(BaseModelViewSet):
         # cache check for loan booked param
         loan_booked_key = f"loan_booked_{nbfc_id}_{due_date}"
         cached_loan_booked = cache.get(loan_booked_key)
-        if cached_loan_booked:
+
+        if cached_loan_booked is not None:
             loan_booked = cached_loan_booked
         else:
             loan_booked = Common.get_collection_and_loan_booked(nbfc_id, due_date)[1]
