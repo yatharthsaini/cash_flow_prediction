@@ -31,9 +31,17 @@ class NBFCBranchView(APIView):
             return Response({"error": "branch id is required"}, status=status.HTTP_400_BAD_REQUEST)
         if branch_name is None or len(branch_name.strip()) == 0:
             return Response({"error": "branch name is required"}, status=status.HTTP_400_BAD_REQUEST)
+        branch_master_instance = NbfcBranchMaster.objects.filter(
+            branch_name=branch_name,
+            id=id
+        ).first()
+
+        if branch_master_instance:
+            return Response({'message': 'NBFC already registered to branch master'}, status=status.HTTP_200_OK)
+
         branch_master_instance = NbfcBranchMaster(
             id=id,
-            branch_name=branch_name,
+            branch_name=branch_name
         )
         if delay_in_disbursal:
             branch_master_instance.delay_in_disbursal = delay_in_disbursal
