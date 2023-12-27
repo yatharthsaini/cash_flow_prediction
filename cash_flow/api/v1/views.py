@@ -1,8 +1,6 @@
 import os
 from datetime import datetime, timedelta
 from django.core.cache import cache
-from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
 
 from rest_framework.permissions import AllowAny
 from rest_framework.viewsets import ModelViewSet
@@ -33,9 +31,17 @@ class NBFCBranchView(APIView):
             return Response({"error": "branch id is required"}, status=status.HTTP_400_BAD_REQUEST)
         if branch_name is None or len(branch_name.strip()) == 0:
             return Response({"error": "branch name is required"}, status=status.HTTP_400_BAD_REQUEST)
+        branch_master_instance = NbfcBranchMaster.objects.filter(
+            branch_name=branch_name,
+            id=id
+        ).first()
+
+        if branch_master_instance:
+            return Response({'message': 'NBFC already registered to branch master'}, status=status.HTTP_200_OK)
+
         branch_master_instance = NbfcBranchMaster(
             id=id,
-            branch_name=branch_name,
+            branch_name=branch_name
         )
         if delay_in_disbursal:
             branch_master_instance.delay_in_disbursal = delay_in_disbursal
@@ -109,7 +115,7 @@ class CapitalInflowDataView(APIView):
         get request for getting capital inflow data for a particular nbfc_id and due_date
         :param request: payload containing nbfc_id and due_date
         """
-        payload = request.data
+        payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
         if nbfc_id is None:
             return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -186,7 +192,7 @@ class HoldCashDataView(APIView):
         get request for getting hold cash data for a particular nbfc_id and due_date
         :param request: payload containing nbfc_id and due_date
         """
-        payload = request.data
+        payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
         if nbfc_id is None:
             return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -266,7 +272,7 @@ class UserRatioDataView(APIView):
         get request for getting user ratio data for a particular nbfc_id and due_date
         :param request: payload containing nbfc_id and due_date
         """
-        payload = request.data
+        payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
         if nbfc_id is None:
             return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -301,7 +307,7 @@ class GetCashFlowView(BaseModelViewSet):
     """
 
     def get(self, request):
-        payload = request.data
+        payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
         if nbfc_id is None:
             return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -319,7 +325,8 @@ class GetCashFlowView(BaseModelViewSet):
         # cache check for loan booked param
         loan_booked_key = f"loan_booked_{nbfc_id}_{due_date}"
         cached_loan_booked = cache.get(loan_booked_key)
-        if cached_loan_booked:
+
+        if cached_loan_booked is not None:
             loan_booked = cached_loan_booked
         else:
             loan_booked = Common.get_collection_and_loan_booked(nbfc_id, due_date)[1]
@@ -431,6 +438,18 @@ class BookNBFCView(APIView):
 
         # case when a user has already assigned nbfc
         if assigned_nbfc_id:
+            if str(assigned_nbfc_id) in settings.NO_CHANGE_NBFC_LIST:
+                """
+                nbfc will not be changed if already assigned for some cases like Unity Bank
+                """
+                return Response({
+                    'data': {
+                        'user_id': user_id,
+                        'assigned_nbfc': assigned_nbfc_id
+                    },
+                    'message': 'No change in  nbfc is required because assigned nbfc is listed in no-update nbfc list'
+                }, status=status.HTTP_200_OK)
+
             hold_cash = 0.0
             hold_cash_instance = HoldCashData.objects.filter(nbfc_id=assigned_nbfc_id,
                                                              start_date__lte=due_date,
@@ -444,18 +463,6 @@ class BookNBFCView(APIView):
                         'assigned_nbfc': assigned_nbfc_id
                     },
                     'message': 'No change in nbfc is required because of 100 percent hold cash of assigned nbfc'
-                }, status=status.HTTP_200_OK)
-
-            if assigned_nbfc_id in settings.NO_CHANGE_NBFC_LIST:
-                """
-                nbfc will not be changed if already assigned for some cases like Unity Bank
-                """
-                return Response({
-                    'data': {
-                        'user_id': user_id,
-                        'assigned_nbfc': assigned_nbfc_id
-                    },
-                    'message': 'No change in  nbfc is required because assigned nbfc is listed in no-update nbfc list'
                 }, status=status.HTTP_200_OK)
 
             str_due_date = due_date.strftime('%Y-%m-%d')
