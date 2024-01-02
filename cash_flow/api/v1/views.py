@@ -117,7 +117,7 @@ class CapitalInflowDataView(APIView):
         """
         payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
-        if nbfc_id is None:
+        if nbfc_id is None or nbfc_id == '':
             return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
         due_date = payload.get('due_date', None)
         if due_date:
@@ -194,7 +194,7 @@ class HoldCashDataView(APIView):
         """
         payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
-        if nbfc_id is None:
+        if nbfc_id is None or nbfc_id == '':
             return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
         due_date = payload.get('due_date', None)
         if due_date:
@@ -274,7 +274,7 @@ class UserRatioDataView(APIView):
         """
         payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
-        if nbfc_id is None:
+        if nbfc_id is None or nbfc_id == '':
             return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
         due_date = payload.get('due_date', None)
         if due_date:
@@ -309,7 +309,7 @@ class GetCashFlowView(BaseModelViewSet):
     def get(self, request):
         payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
-        if nbfc_id is None:
+        if nbfc_id is None or nbfc_id == '':
             return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
         due_date = payload.get('due_date', None)
         if due_date:
