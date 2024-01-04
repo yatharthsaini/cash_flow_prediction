@@ -399,9 +399,9 @@ class SuccessStatus(APIView):
     def get(self, request):
         return Response(
             {
-                "status": "Success",
-                "ip_address": os.environ.get("PRIVATE_IP_ADDRESS"),
-                "server_node": os.environ.get("SERVER_NODE"),
+                "STATUS": "Success",
+                "IP_ADDRESS": os.environ.get("PRIVATE_IP_ADDRESS"),
+                "HOSTNAME": os.environ.get("HOSTNAME"),
             },
             status=status.HTTP_200_OK,
         )

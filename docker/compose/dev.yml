@@ -15,5 +15,5 @@ services:
     image: redis:latest
     container_name: cash_flow_prediction_backend_redis
     ports:
-      - "6380:6379"
+      - "6381:6379"
 
