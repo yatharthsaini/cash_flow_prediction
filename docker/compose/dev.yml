@@ -9,7 +9,7 @@ services:
 
   nginx:
     ports:
-      - "8033:80"
+      - "5033:80"
 
   redis:
     image: redis:latest
