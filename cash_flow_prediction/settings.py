@@ -263,9 +263,9 @@ CELERY_CACHE_BACKEND = 'django-cache'
 
 CELERY_TIMEZONE = "Asia/Kolkata"
 CELERY_TASK_TRACK_STARTED = True
+CELERY_RESULT_EXTENDED = True
 
 # email settings ...
-
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS")
 EMAIL_PORT = os.environ.get("EMAIL_PORT")
 EMAIL_HOST = os.environ.get("EMAIL_HOST")
