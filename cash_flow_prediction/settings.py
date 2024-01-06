@@ -33,9 +33,10 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 ENVIRONMENT = os.environ.get('ENVIRONMENT')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split()
+CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "").split()
 
 # application definition
 ROOT_APP = ["cash_flow_prediction"]
@@ -121,6 +122,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",
     "http://localhost:3000",
     "http://127.0.0.1:8000",
+    "https://slugbuns.paymeindia.in/"
 ]
 
 # imported MethodNames enum from the constants.py
@@ -224,7 +226,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
-STATIC_ROOT = "static"
+STATIC_ROOT = os.path.join(BASE_DIR / "static")
 MEDIA_ROOT = os.path.join(BASE_DIR, "media_root")
 
 
@@ -278,6 +280,7 @@ EMAIL_ONE = os.environ.get('EMAIL_ONE')
 EMAIL_TWO = os.environ.get('EMAIL_TWO')
 CELERY_ERROR_EMAIL_LIST = os.environ.get('CELERY_ERROR_EMAIL_LIST').split(" ")
 
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL")
 
 # apis related to collection efficiency data
 COLLECTION_PREDICTION_POLL_URL = os.environ.get('COLLECTION_PREDICTION_POLL_URL')
@@ -293,3 +296,21 @@ PROJECT_NAME = os.environ.get('PROJECT_NAME')
 
 # NBFC's that does not update the nbfc to be booked while cash flow
 NO_CHANGE_NBFC_LIST = os.environ.get('NO_CHANGE_NBFC_LIST').split(" ")
+
+
+ADMINS = [
+    ("Vineet", "vineet.daniel@paymeindia.in"),
+    ("Alok", "alok.sharma@paymeindia.in"),
+    ("Vishal", "gupta.vishal@paymeindia.in"),
+    ("Satish", "satish.pandey@paymeindia.in"),
+    ("Manit", "manit.choudhary@paymeindia.in"),
+    ("Avinash", "avinash.kumar@paymeindia.in"),
+    ("Vimal", "vimal.mahawar@paymeindia.in"),
+    ("Parul", "parul@paymeindia.in"),
+    ("Ankit", "ankit.baliyan@paymeindia.in"),
+    ("Abhishek", "abhishek.gupta@paymeindia.in"),
+    ("Yatharth", "yatharth.saini@paymeindia.in"),
+    ("Aayush", "aayush.rawal@paymeindia.in"),
+    ("Tarun", "tarun.pandey@paymeindia.in"),
+    ("Dheeraj", "dheeraj.thakur@paymeindia.in"),
+]

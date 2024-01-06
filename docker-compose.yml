@@ -23,13 +23,19 @@ services:
     hostname: docker-cash-flow-prediction-nginx
     container_name: cash_flow_prediction_nginx
     volumes:
+      - static_root:/app/static
       - /var/log/nginx/:/var/log/nginx/
     depends_on:
       - app
 
 networks:
   default:
+    driver: bridge
     name: cash_flow_prediction_network
+    ipam:
+      config:
+        - subnet: 60.0.3.0/24
+
 
 volumes:
   static_root:
