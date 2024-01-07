@@ -122,7 +122,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",
     "http://localhost:3000",
     "http://127.0.0.1:8000",
-    "https://slugbuns.paymeindia.in/"
+    "https://slugbuns.paymeindia.in"
 ]
 
 # imported MethodNames enum from the constants.py
@@ -265,9 +265,9 @@ CELERY_CACHE_BACKEND = 'django-cache'
 
 CELERY_TIMEZONE = "Asia/Kolkata"
 CELERY_TASK_TRACK_STARTED = True
+CELERY_RESULT_EXTENDED = True
 
 # email settings ...
-
 EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS")
 EMAIL_PORT = os.environ.get("EMAIL_PORT")
 EMAIL_HOST = os.environ.get("EMAIL_HOST")
