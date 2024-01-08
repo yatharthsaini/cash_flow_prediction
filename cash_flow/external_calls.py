@@ -19,7 +19,7 @@ def get_collection_poll_response() -> Any:
     """
     url = settings.COLLECTION_PREDICTION_POLL_URL
     headers = get_common_headers()
-    response = requests.get(url=url, headers=headers, timeout=5)
+    response = requests.get(url=url, headers=headers, timeout=200)
     return response
 
 
@@ -33,7 +33,7 @@ def get_due_amount_response(due_date: str) -> Any:
     params = {
         "date": due_date
     }
-    response = requests.get(url=url, headers=headers, params=params, timeout=5)
+    response = requests.get(url=url, headers=headers, params=params, timeout=300)
     return response
 
 
@@ -44,7 +44,7 @@ def get_nbfc_list() -> Any:
     """
     url = settings.NBFC_LIST_URL
     headers = get_common_headers()
-    response = requests.get(url=url, headers=headers, timeout=5)
+    response = requests.get(url=url, headers=headers, timeout=300)
     return response
 
 
@@ -58,7 +58,7 @@ def get_collection_amount_response(due_date: str) -> Any:
     params = {
         "date": due_date
     }
-    response = requests.get(url=url, headers=headers, params=params, timeout=5)
+    response = requests.get(url=url, headers=headers, params=params, timeout=300)
     return response
 
 
@@ -72,7 +72,7 @@ def get_loan_booked_data(due_date: str) -> Any:
     params = {
         "date": due_date
     }
-    response = requests.get(url=url, headers=headers, params=params, timeout=5)
+    response = requests.get(url=url, headers=headers, params=params, timeout=300)
     return response
 
 
@@ -85,7 +85,7 @@ def get_cash_flow_data(nbfc_id: int, due_date: str) -> Any:
         'nbfc_id': nbfc_id,
         'due_date': due_date
     }
-    response = requests.get(url=url, data=payload, timeout=5)
+    response = requests.get(url=url, data=payload, timeout=300)
     return response
 
 
