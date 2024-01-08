@@ -3,15 +3,22 @@ import requests
 from django.conf import settings
 
 
+def get_common_headers():
+    """
+    common headers function
+    """
+    return {
+        "token": settings.COLLECTION_PREDICTION_TOKEN
+    }
+
+
 def get_collection_poll_response() -> Any:
     """
     External api for getting the collection poll data
     :return: json response
     """
     url = settings.COLLECTION_PREDICTION_POLL_URL
-    headers = {
-        "token": settings.COLLECTION_PREDICTION_TOKEN
-    }
+    headers = get_common_headers()
     response = requests.get(url=url, headers=headers, timeout=5)
     return response
 
@@ -22,9 +29,7 @@ def get_due_amount_response(due_date: str) -> Any:
     :return: json response
     """
     url = settings.DUE_AMOUNT_URL
-    headers = {
-        "token": settings.COLLECTION_PREDICTION_TOKEN
-    }
+    headers = get_common_headers()
     params = {
         "date": due_date
     }
@@ -38,9 +43,7 @@ def get_nbfc_list() -> Any:
     :return: json response
     """
     url = settings.NBFC_LIST_URL
-    headers = {
-        "token": settings.COLLECTION_PREDICTION_TOKEN
-    }
+    headers = get_common_headers()
     response = requests.get(url=url, headers=headers, timeout=5)
     return response
 
@@ -51,9 +54,7 @@ def get_collection_amount_response(due_date: str) -> Any:
     :return: json response
     """
     url = settings.COLLECTION_AMOUNT_URL
-    headers = {
-        "token": settings.COLLECTION_PREDICTION_TOKEN
-    }
+    headers = get_common_headers()
     params = {
         "date": due_date
     }
@@ -67,9 +68,7 @@ def get_loan_booked_data(due_date: str) -> Any:
     return: json response
     """
     url = settings.LOAN_BOOKED_URL
-    headers = {
-        "token": settings.COLLECTION_PREDICTION_TOKEN
-    }
+    headers = get_common_headers()
     params = {
         "date": due_date
     }
