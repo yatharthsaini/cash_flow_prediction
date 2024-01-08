@@ -421,11 +421,12 @@ class BookNBFCView(APIView):
         assigned_nbfc_id, old_user
         :return: the nbfc_id to be booked for the loan
         """
-        payload = request.data
+        payload = request.query_params
+
         user_id = payload.get('user_id', None)
         loan_type = payload.get('loan_type', None)
         old_user = payload.get('old_user', True)
-        assigned_nbfc_id = payload.get('old_nbfc_id', None)
+        assigned_nbfc_id = payload.get('assigned_nbfc_id', None)
         cibil_score = payload.get('cibil_score', None)
         loan_tenure = payload.get('loan_tenure', None)
         loan_tenure_unit = payload.get('loan_tenure_unit', None)
@@ -438,9 +439,15 @@ class BookNBFCView(APIView):
             due_date = datetime.now()
 
         # missing fields check
-        if user_id is None or loan_type is None or cibil_score is None or loan_tenure is None or loan_amount is None \
-                or loan_tenure_unit is None:
+        if any(value is None or value == '' for value in
+               [user_id, loan_type, cibil_score, loan_tenure, loan_amount, loan_tenure_unit]):
             return Response({'error': 'one of the fields is missing'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # typecasting into model oriented fields
+        user_id = int(user_id)
+        cibil_score = int(cibil_score)
+        loan_tenure = int(loan_tenure)
+        loan_amount = float(loan_amount)
 
         # case when a user has already assigned nbfc
         if assigned_nbfc_id:
@@ -474,6 +481,7 @@ class BookNBFCView(APIView):
             str_due_date = due_date.strftime('%Y-%m-%d')
             cash_flow_data = get_cash_flow_data(assigned_nbfc_id, str_due_date).json()
             available_credit_line = cash_flow_data.get('available_cash_flow', None)
+
             if available_credit_line >= loan_amount:
                 return Response({
                     'data': {
