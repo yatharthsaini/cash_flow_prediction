@@ -3,9 +3,9 @@ version: '3.8'
 services:
   app:
     build: .
-    image: cash_flow_prediction_django
-    hostname: docker-cash_flow_prediction-django
-    container_name: cash_flow_prediction_django
+    image: cash_flow_prediction_app
+    hostname: app-docker-cash_flow_prediction
+    container_name: cash_flow_prediction_app
     restart: always
     command: bash -c "/app/runserver.sh"
     volumes:
@@ -20,7 +20,7 @@ services:
   nginx:
     build: ./docker/nginx
     image: cash_flow_prediction_nginx
-    hostname: docker-cash-flow-prediction-nginx
+    hostname: nginx-docker-cash-flow-prediction
     container_name: cash_flow_prediction_nginx
     volumes:
       - static_root:/app/static
