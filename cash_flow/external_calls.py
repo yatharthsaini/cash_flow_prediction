@@ -12,7 +12,7 @@ def get_collection_poll_response() -> Any:
     headers = {
         "token": settings.COLLECTION_PREDICTION_TOKEN
     }
-    response = requests.get(url=url, headers=headers)
+    response = requests.get(url=url, headers=headers, timeout=5)
     return response
 
 
@@ -28,7 +28,7 @@ def get_due_amount_response(due_date: str) -> Any:
     params = {
         "date": due_date
     }
-    response = requests.get(url=url, headers=headers, params=params)
+    response = requests.get(url=url, headers=headers, params=params, timeout=5)
     return response
 
 
@@ -41,7 +41,7 @@ def get_nbfc_list() -> Any:
     headers = {
         "token": settings.COLLECTION_PREDICTION_TOKEN
     }
-    response = requests.get(url=url, headers=headers)
+    response = requests.get(url=url, headers=headers, timeout=5)
     return response
 
 
@@ -57,7 +57,7 @@ def get_collection_amount_response(due_date: str) -> Any:
     params = {
         "date": due_date
     }
-    response = requests.get(url=url, headers=headers, params=params)
+    response = requests.get(url=url, headers=headers, params=params, timeout=5)
     return response
 
 
@@ -73,7 +73,7 @@ def get_loan_booked_data(due_date: str) -> Any:
     params = {
         "date": due_date
     }
-    response = requests.get(url=url, headers=headers, params=params)
+    response = requests.get(url=url, headers=headers, params=params, timeout=5)
     return response
 
 
@@ -86,7 +86,7 @@ def get_cash_flow_data(nbfc_id: int, due_date: str) -> Any:
         'nbfc_id': nbfc_id,
         'due_date': due_date
     }
-    response = requests.get(url=url, data=payload)
+    response = requests.get(url=url, data=payload, timeout=5)
     return response
 
 

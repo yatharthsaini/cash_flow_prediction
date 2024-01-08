@@ -118,6 +118,8 @@ class Common:
         :return: carry_forward
         """
         carry_forward = (collection + capital_inflow) * (1 - (hold_cash / 100)) + loan_booked
+        if carry_forward is None:
+            return 0
         return carry_forward
 
     @staticmethod
