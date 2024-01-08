@@ -64,7 +64,10 @@ class Common:
         ).first()
         amount = 0.0
         if projection_collection_instance:
-            amount = projection_collection_instance.aggregate(Sum('amount'))['amount__sum']
+            amount = ProjectionCollectionData.objects.filter(
+                nbfc=nbfc_id,
+                due_date=due_date
+            ).aggregate(Sum('amount'))['amount__sum']
         return amount
 
     @staticmethod
@@ -115,6 +118,8 @@ class Common:
         :return: carry_forward
         """
         carry_forward = (collection + capital_inflow) * (1 - (hold_cash / 100)) + loan_booked
+        if carry_forward is None:
+            return 0
         return carry_forward
 
     @staticmethod
@@ -188,17 +193,17 @@ class Common:
                 available_credit_line = cash_flow_data.get('available_cash_flow', None)
                 if old_user:
                     old_user_percentage = cash_flow_data.get('old_user_percentage', None)
-                    available_credit_line = (available_credit_line*old_user_percentage)/100
+                    available_credit_line = (available_credit_line * old_user_percentage) / 100
                 else:
                     new_user_percentage = cash_flow_data.get('new_user_percentage', None)
-                    available_credit_line = (available_credit_line*new_user_percentage)/100
+                    available_credit_line = (available_credit_line * new_user_percentage) / 100
 
                 if available_credit_line >= sanctioned_amount:
                     available_credit_line_branches.append(branch_id)
                 else:
-                    overbooked_amount = (sanctioned_amount-available_credit_line)
+                    overbooked_amount = (sanctioned_amount - available_credit_line)
                     if available_credit_line != 0:
-                        over_booked_ratio = overbooked_amount/available_credit_line
+                        over_booked_ratio = overbooked_amount / available_credit_line
                         overbooked_data.append(
                             {
                                 'id': branch_id,
@@ -213,6 +218,3 @@ class Common:
             min_overbooked_ratio_branch = min(overbooked_data, key=lambda x: x['ratio'])
             return min_overbooked_ratio_branch['id']
         return -1
-
-
-

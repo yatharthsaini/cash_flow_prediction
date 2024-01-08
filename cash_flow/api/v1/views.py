@@ -70,8 +70,10 @@ class CapitalInflowDataView(APIView):
         payload = request.data
         nbfc_id = payload.get('nbfc_id', None)
         if nbfc_id is None:
-            return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "nbfc_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         capital_inflow = payload.get('capital_inflow', None)
+        if capital_inflow is None:
+            return Response({"error": "capital_inflow is required"}, status=status.HTTP_400_BAD_REQUEST)
         due_date = payload.get('due_date', None)
         if due_date:
             due_date = datetime.strptime(due_date, "%Y-%m-%d")
@@ -148,8 +150,10 @@ class HoldCashDataView(APIView):
         payload = request.data
         nbfc_id = payload.get('nbfc_id', None)
         if nbfc_id is None:
-            return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "nbfc_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         hold_cash = payload.get('hold_cash', None)
+        if hold_cash is None:
+            return Response({"error": "hold_cash is required"}, status=status.HTTP_400_BAD_REQUEST)
         due_date = payload.get('due_date', None)
         if due_date:
             due_date = datetime.strptime(due_date, "%Y-%m-%d")
@@ -225,8 +229,10 @@ class UserRatioDataView(APIView):
         payload = request.data
         nbfc_id = payload.get('nbfc_id', None)
         if nbfc_id is None:
-            return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "nbfc_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         old_percentage = payload.get('old_percentage', None)
+        if old_percentage is None:
+            return Response({"error": "old_percentage is required"}, status=status.HTTP_400_BAD_REQUEST)
         new_percentage = 100 - float(old_percentage)
         due_date = payload.get('due_date', None)
         if due_date:
