@@ -31,23 +31,28 @@ class NBFCBranchView(APIView):
             return Response({"error": "branch id is required"}, status=status.HTTP_400_BAD_REQUEST)
         if branch_name is None or len(branch_name.strip()) == 0:
             return Response({"error": "branch name is required"}, status=status.HTTP_400_BAD_REQUEST)
-        branch_master_instance = NbfcBranchMaster.objects.filter(
-            branch_name=branch_name,
-            id=id
-        ).first()
 
-        if branch_master_instance:
-            return Response({'message': 'NBFC already registered to branch master'}, status=status.HTTP_200_OK)
+        try:
+            branch_master_instance = NbfcBranchMaster.objects.filter(
+                branch_name=branch_name,
+                id=id
+            ).first()
 
-        branch_master_instance = NbfcBranchMaster(
-            id=id,
-            branch_name=branch_name
-        )
-        if delay_in_disbursal:
-            branch_master_instance.delay_in_disbursal = delay_in_disbursal
+            if branch_master_instance:
+                return Response({'message': 'NBFC already registered to branch master'}, status=status.HTTP_200_OK)
 
-        branch_master_instance.save()
-        return Response({"message": "NBFC stored to branch master successfully"}, status=status.HTTP_200_OK)
+            branch_master_instance = NbfcBranchMaster(
+                id=id,
+                branch_name=branch_name
+            )
+            if delay_in_disbursal:
+                branch_master_instance.delay_in_disbursal = delay_in_disbursal
+
+            branch_master_instance.save()
+            return Response({"message": "NBFC stored to branch master successfully"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         """
@@ -89,28 +94,32 @@ class CapitalInflowDataView(APIView):
                     return Response({"error": "end_date can only be greater than equal to the start_date"},
                                     status=status.HTTP_400_BAD_REQUEST)
 
-        master_instance = NbfcBranchMaster.objects.filter(id=nbfc_id).first()
-        if master_instance is None:
-            return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            master_instance = NbfcBranchMaster.objects.filter(id=nbfc_id).first()
+            if master_instance is None:
+                return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
 
-        capital_inflow_instance = CapitalInflowData.objects.filter(
-            nbfc_id=nbfc_id,
-            start_date=due_date
-        ).first()
-        if capital_inflow_instance:
-            capital_inflow_instance.end_date = end_date
-            capital_inflow_instance.capital_inflow = capital_inflow
-            capital_inflow_instance.save()
-            return Response({"message": "capital inflow updated successfully"}, status=status.HTTP_200_OK)
-        else:
-            capital_inflow_instance = CapitalInflowData(
-                nbfc=master_instance,
-                start_date=due_date,
-                end_date=end_date,
-                capital_inflow=capital_inflow
-            )
-            capital_inflow_instance.save()
-            return Response({"message": "capital inflow stored successfully"}, status=status.HTTP_200_OK)
+            capital_inflow_instance = CapitalInflowData.objects.filter(
+                nbfc_id=nbfc_id,
+                start_date=due_date
+            ).first()
+            if capital_inflow_instance:
+                capital_inflow_instance.end_date = end_date
+                capital_inflow_instance.capital_inflow = capital_inflow
+                capital_inflow_instance.save()
+                return Response({"message": "capital inflow updated successfully"}, status=status.HTTP_200_OK)
+            else:
+                capital_inflow_instance = CapitalInflowData(
+                    nbfc=master_instance,
+                    start_date=due_date,
+                    end_date=end_date,
+                    capital_inflow=capital_inflow
+                )
+                capital_inflow_instance.save()
+                return Response({"message": "capital inflow stored successfully"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         """
@@ -127,18 +136,22 @@ class CapitalInflowDataView(APIView):
         else:
             due_date = datetime.now()
 
-        capital_inflow_instance = CapitalInflowData.objects.filter(nbfc_id=nbfc_id,
-                                                                   start_date__lte=due_date,
-                                                                   end_date__gte=due_date).first()
-        if not capital_inflow_instance:
-            return Response({"error": "capital inflow data not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            capital_inflow_instance = CapitalInflowData.objects.filter(nbfc_id=nbfc_id,
+                                                                       start_date__lte=due_date,
+                                                                       end_date__gte=due_date).first()
+            if not capital_inflow_instance:
+                return Response({"error": "capital inflow data not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        return Response({
-            'nbfc_id': capital_inflow_instance.nbfc_id,
-            'start_date': capital_inflow_instance.start_date,
-            'end_date': capital_inflow_instance.end_date,
-            'capital_inflow': capital_inflow_instance.capital_inflow
-        }, status=status.HTTP_200_OK)
+            return Response({
+                'nbfc_id': capital_inflow_instance.nbfc_id,
+                'start_date': capital_inflow_instance.start_date,
+                'end_date': capital_inflow_instance.end_date,
+                'capital_inflow': capital_inflow_instance.capital_inflow
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class HoldCashDataView(APIView):
@@ -169,27 +182,31 @@ class HoldCashDataView(APIView):
                     return Response({"error": "end_date can only be greater than equal to the start_date"},
                                     status=status.HTTP_400_BAD_REQUEST)
 
-        master_instance = NbfcBranchMaster.objects.filter(id=nbfc_id).first()
-        if master_instance is None:
-            return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
-        hold_cash_instance = HoldCashData.objects.filter(
-            nbfc_id=nbfc_id,
-            start_date=due_date
-        ).first()
-        if hold_cash_instance:
-            hold_cash_instance.end_date = end_date
-            hold_cash_instance.hold_cash = hold_cash
-            hold_cash_instance.save()
-            return Response({"message": "hold cash updated successfully"}, status=status.HTTP_200_OK)
-        else:
-            hold_cash_instance = HoldCashData(
-                nbfc=master_instance,
-                start_date=due_date,
-                end_date=end_date,
-                hold_cash=hold_cash,
-            )
-            hold_cash_instance.save()
-            return Response({"message": "hold cash stored successfully"}, status=status.HTTP_200_OK)
+        try:
+            master_instance = NbfcBranchMaster.objects.filter(id=nbfc_id).first()
+            if master_instance is None:
+                return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
+            hold_cash_instance = HoldCashData.objects.filter(
+                nbfc_id=nbfc_id,
+                start_date=due_date
+            ).first()
+            if hold_cash_instance:
+                hold_cash_instance.end_date = end_date
+                hold_cash_instance.hold_cash = hold_cash
+                hold_cash_instance.save()
+                return Response({"message": "hold cash updated successfully"}, status=status.HTTP_200_OK)
+            else:
+                hold_cash_instance = HoldCashData(
+                    nbfc=master_instance,
+                    start_date=due_date,
+                    end_date=end_date,
+                    hold_cash=hold_cash,
+                )
+                hold_cash_instance.save()
+                return Response({"message": "hold cash stored successfully"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         """
@@ -206,18 +223,22 @@ class HoldCashDataView(APIView):
         else:
             due_date = datetime.now()
 
-        hold_cash_instance = HoldCashData.objects.filter(nbfc_id=nbfc_id,
-                                                         start_date__lte=due_date,
-                                                         end_date__gte=due_date).first()
-        if not hold_cash_instance:
-            return Response({"error": "hold cash data not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            hold_cash_instance = HoldCashData.objects.filter(nbfc_id=nbfc_id,
+                                                             start_date__lte=due_date,
+                                                             end_date__gte=due_date).first()
+            if not hold_cash_instance:
+                return Response({"error": "hold cash data not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        return Response({
-            'nbfc_id': hold_cash_instance.nbfc_id,
-            'start_date': hold_cash_instance.start_date,
-            'end_date': hold_cash_instance.end_date,
-            'hold_cash': hold_cash_instance.hold_cash
-        }, status=status.HTTP_200_OK)
+            return Response({
+                'nbfc_id': hold_cash_instance.nbfc_id,
+                'start_date': hold_cash_instance.start_date,
+                'end_date': hold_cash_instance.end_date,
+                'hold_cash': hold_cash_instance.hold_cash
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class UserRatioDataView(APIView):
@@ -249,29 +270,33 @@ class UserRatioDataView(APIView):
                     return Response({"error": "end_date can only be greater than equal to the start_date"},
                                     status=status.HTTP_400_BAD_REQUEST)
 
-        master_instance = NbfcBranchMaster.objects.filter(id=nbfc_id).first()
-        if master_instance is None:
-            return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
-        user_ratio_instance = UserRatioData.objects.filter(
-            nbfc_id=nbfc_id,
-            start_date=end_date
-        ).first()
-        if user_ratio_instance:
-            user_ratio_instance.end_date = end_date
-            user_ratio_instance.old_percentage = old_percentage
-            user_ratio_instance.new_percentage = new_percentage
-            user_ratio_instance.save()
-            return Response({"message": "user ratio data updated successfully"}, status=status.HTTP_200_OK)
-        else:
-            user_ratio_instance = UserRatioData(
-                nbfc=master_instance,
-                start_date=due_date,
-                end_date=end_date,
-                new_percentage=float(new_percentage),
-                old_percentage=float(old_percentage)
-            )
-            user_ratio_instance.save()
-            return Response({"message": "User ratio stored successfully"}, status=status.HTTP_200_OK)
+        try:
+            master_instance = NbfcBranchMaster.objects.filter(id=nbfc_id).first()
+            if master_instance is None:
+                return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
+            user_ratio_instance = UserRatioData.objects.filter(
+                nbfc_id=nbfc_id,
+                start_date=end_date
+            ).first()
+            if user_ratio_instance:
+                user_ratio_instance.end_date = end_date
+                user_ratio_instance.old_percentage = old_percentage
+                user_ratio_instance.new_percentage = new_percentage
+                user_ratio_instance.save()
+                return Response({"message": "user ratio data updated successfully"}, status=status.HTTP_200_OK)
+            else:
+                user_ratio_instance = UserRatioData(
+                    nbfc=master_instance,
+                    start_date=due_date,
+                    end_date=end_date,
+                    new_percentage=float(new_percentage),
+                    old_percentage=float(old_percentage)
+                )
+                user_ratio_instance.save()
+                return Response({"message": "User ratio stored successfully"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get(self, request):
         """
@@ -288,19 +313,23 @@ class UserRatioDataView(APIView):
         else:
             due_date = datetime.now()
 
-        user_ratio_instance = UserRatioData.objects.filter(nbfc_id=nbfc_id,
-                                                           start_date__lte=due_date,
-                                                           end_date__gte=due_date).first()
-        if not user_ratio_instance:
-            return Response({"error": "user ratio data not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            user_ratio_instance = UserRatioData.objects.filter(nbfc_id=nbfc_id,
+                                                               start_date__lte=due_date,
+                                                               end_date__gte=due_date).first()
+            if not user_ratio_instance:
+                return Response({"error": "user ratio data not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        return Response({
-            'nbfc_id': user_ratio_instance.nbfc_id,
-            'start_date': user_ratio_instance.start_date,
-            'end_date': user_ratio_instance.end_date,
-            'old_user_percentage': user_ratio_instance.old_percentage,
-            'new_user_percentage': user_ratio_instance.new_percentage
-        }, status=status.HTTP_200_OK)
+            return Response({
+                'nbfc_id': user_ratio_instance.nbfc_id,
+                'start_date': user_ratio_instance.start_date,
+                'end_date': user_ratio_instance.end_date,
+                'old_user_percentage': user_ratio_instance.old_percentage,
+                'new_user_percentage': user_ratio_instance.new_percentage
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error', error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GetCashFlowView(BaseModelViewSet):
@@ -326,74 +355,78 @@ class GetCashFlowView(BaseModelViewSet):
         if master_instance is None:
             return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
 
-        predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
+        try:
+            predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
 
-        # cache check for loan booked param
-        loan_booked_key = f"loan_booked_{nbfc_id}_{due_date}"
-        cached_loan_booked = cache.get(loan_booked_key)
+            # cache check for loan booked param
+            loan_booked_key = f"loan_booked_{nbfc_id}_{due_date}"
+            cached_loan_booked = cache.get(loan_booked_key)
 
-        if cached_loan_booked is not None:
-            loan_booked = cached_loan_booked
-        else:
-            loan_booked = Common.get_collection_and_loan_booked(nbfc_id, due_date)[1]
-            cache.set(loan_booked_key, loan_booked, timeout=60 * 60 * 24)
+            if cached_loan_booked is not None:
+                loan_booked = cached_loan_booked
+            else:
+                loan_booked = Common.get_collection_and_loan_booked(nbfc_id, due_date)[1]
+                cache.set(loan_booked_key, loan_booked, timeout=60 * 60 * 24)
 
-        collection = Common.get_collection_and_loan_booked(nbfc_id, due_date)[0]
+            collection = Common.get_collection_and_loan_booked(nbfc_id, due_date)[0]
 
-        capital_inflow = 0.0
-        capital_inflow_instance = CapitalInflowData.objects.filter(nbfc_id=nbfc_id,
-                                                                   start_date__lte=due_date,
-                                                                   end_date__gte=due_date).first()
-        if capital_inflow_instance:
-            capital_inflow = capital_inflow_instance.capital_inflow
+            capital_inflow = 0.0
+            capital_inflow_instance = CapitalInflowData.objects.filter(nbfc_id=nbfc_id,
+                                                                       start_date__lte=due_date,
+                                                                       end_date__gte=due_date).first()
+            if capital_inflow_instance:
+                capital_inflow = capital_inflow_instance.capital_inflow
 
-        hold_cash = 0.0
-        hold_cash_instance = HoldCashData.objects.filter(nbfc_id=nbfc_id,
-                                                         start_date__lte=due_date,
-                                                         end_date__gte=due_date).first()
-        if hold_cash_instance:
-            hold_cash = hold_cash_instance.hold_cash
+            hold_cash = 0.0
+            hold_cash_instance = HoldCashData.objects.filter(nbfc_id=nbfc_id,
+                                                             start_date__lte=due_date,
+                                                             end_date__gte=due_date).first()
+            if hold_cash_instance:
+                hold_cash = hold_cash_instance.hold_cash
 
-        # by default taking old user percentage as 100 and new user percentage as 0 if user ratio data not present
-        old_user_percentage = 100.0
-        new_user_percentage = 0.0
-        user_ratio_instance = UserRatioData.objects.filter(nbfc_id=nbfc_id,
-                                                           start_date__lte=due_date,
-                                                           end_date__gte=due_date).first()
-        if user_ratio_instance:
-            old_user_percentage = user_ratio_instance.old_percentage
-            new_user_percentage = user_ratio_instance.new_percentage
+            # by default taking old user percentage as 100 and new user percentage as 0 if user ratio data not present
+            old_user_percentage = 100.0
+            new_user_percentage = 0.0
+            user_ratio_instance = UserRatioData.objects.filter(nbfc_id=nbfc_id,
+                                                               start_date__lte=due_date,
+                                                               end_date__gte=due_date).first()
+            if user_ratio_instance:
+                old_user_percentage = user_ratio_instance.old_percentage
+                new_user_percentage = user_ratio_instance.new_percentage
 
-        carry_forward = Common.get_carry_forward(collection, capital_inflow, hold_cash, loan_booked)
-        prev_day_carry_forward = Common.get_prev_day_carry_forward(nbfc_id, due_date)
+            carry_forward = Common.get_carry_forward(collection, capital_inflow, hold_cash, loan_booked)
+            prev_day_carry_forward = Common.get_prev_day_carry_forward(nbfc_id, due_date)
 
-        # cache check for available_cash_flow
-        available_cash_flow_key = f"available_cash_flow_{nbfc_id}_{due_date}"
-        cached_available_cash_flow = cache.get(available_cash_flow_key)
+            # cache check for available_cash_flow
+            available_cash_flow_key = f"available_cash_flow_{nbfc_id}_{due_date}"
+            cached_available_cash_flow = cache.get(available_cash_flow_key)
 
-        if cached_available_cash_flow is not None:
-            # Use cached value if available
-            available_cash_flow = cached_available_cash_flow
-        else:
-            # Calculate and store in cache
-            available_cash_flow = Common.get_available_cash_flow(
-                predicted_cash_inflow, prev_day_carry_forward, capital_inflow, hold_cash
-            )
-            cache.set(available_cash_flow_key, available_cash_flow, timeout=60 * 60 * 24)
-        variance = Common.get_real_time_variance(predicted_cash_inflow, collection)
+            if cached_available_cash_flow is not None:
+                # Use cached value if available
+                available_cash_flow = cached_available_cash_flow
+            else:
+                # Calculate and store in cache
+                available_cash_flow = Common.get_available_cash_flow(
+                    predicted_cash_inflow, prev_day_carry_forward, capital_inflow, hold_cash
+                )
+                cache.set(available_cash_flow_key, available_cash_flow, timeout=60 * 60 * 24)
+            variance = Common.get_real_time_variance(predicted_cash_inflow, collection)
 
-        return Response({
-            'predicted_cash_inflow': predicted_cash_inflow,
-            'collection': collection,
-            'carry_forward': carry_forward,
-            'capital_inflow': capital_inflow,
-            'hold_cash': hold_cash,
-            'loan_booked': loan_booked,
-            'available_cash_flow': available_cash_flow,
-            'variance': variance,
-            'old_user_percentage': old_user_percentage,
-            'new_user_percentage': new_user_percentage
-        }, status=status.HTTP_200_OK)
+            return Response({
+                'predicted_cash_inflow': predicted_cash_inflow,
+                'collection': collection,
+                'carry_forward': carry_forward,
+                'capital_inflow': capital_inflow,
+                'hold_cash': hold_cash,
+                'loan_booked': loan_booked,
+                'available_cash_flow': available_cash_flow,
+                'variance': variance,
+                'old_user_percentage': old_user_percentage,
+                'new_user_percentage': new_user_percentage
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error', error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class SuccessStatus(APIView):
