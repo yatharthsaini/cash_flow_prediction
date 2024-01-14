@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.conf import settings
 from cash_flow.models import (HoldCashData, CapitalInflowData, UserRatioData, NbfcBranchMaster,
-                              NBFCEligibilityCashFlowHead)
+                              NBFCEligibilityCashFlowHead, LoanDetail, LoanBookedLogs)
 from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer
 from cash_flow.external_calls import get_cash_flow_data
 from utils.common_helper import Common
@@ -414,124 +414,149 @@ class SuccessStatus(APIView):
 
 
 class BookNBFCView(APIView):
+    """
+    api view to book a loan and log the loan changes in the loan booked logs and change nbfc according to the
+    """
 
     def get(self, request):
         """
-        :param request: will contain the user_id, loan_type, cibil_score, loan_tenure, loan_amount, loan_tenure, unit,
-        assigned_nbfc_id, old_user
-        :return: the nbfc_id to be booked for the loan
+        :param request:
+        request type i.e. whether is it from the credit limit, loan_application or loan_applied
+        assigned_nfbc_id: will contain the nbfc id : a non-mandatory field and will be none in the case
+        of a new user and when the request type is Credit limit
+        user_id : mandatory field identifying the users
+        loan_id : that is a non-mandatory field only gets available when loan is in application process or is
+        being applied
+        credit_limit : compulsory field
+        user_type : that will tell if the user is old or new, a mandatory field
+        cibil_score : a mandatory field
+        loan_type : that   will tell if the loan is PD or E3, E6, E12 and this will also the tenure for the loan to be
+        booked
+        is_booked : boolean flag that stores if the loan is booked or not
+        i.e :
+        amount : a non-mandatory field posted by the user of the loan amount to be booked
         """
         payload = request.query_params
-
-        user_id = payload.get('user_id', None)
+        user_id = int(payload.get('user_id', None)) if payload.get('user_id') is not None else None
         loan_type = payload.get('loan_type', None)
-        old_user = payload.get('old_user', True)
-        assigned_nbfc_id = payload.get('assigned_nbfc_id', None)
-        cibil_score = payload.get('cibil_score', None)
-        loan_tenure = payload.get('loan_tenure', None)
-        loan_tenure_unit = payload.get('loan_tenure_unit', None)
-        loan_amount = payload.get('loan_amount', None)
-        # checking if due_date not present then taking current date
+        request_type = payload.get('request_type', None)
+        cibil_score = int(payload.get('cibil_score', None)) if payload.get('cibil_score') is not None else None
+        credit_limit = int(payload.get('credit_limit', None)) if payload.get('credit_limit') is not None else None
+        loan_id = int(payload.get('loan_id', None)) if payload.get('loan_id') is not None else None
+        assigned_nbfc = payload.get('assigned_nbfc', None)
+        if assigned_nbfc is not None:
+            assigned_nbfc = int(assigned_nbfc)
+        user_type = payload.get('user_type', 'O')
+        is_booked = bool(payload.get('is_booked', False))
         due_date = payload.get('due_date', None)
         if due_date:
             due_date = datetime.strptime(due_date, "%Y-%m-%d")
         else:
             due_date = datetime.now()
 
-        # missing fields check
-        if any(value is None or value == '' for value in
-               [user_id, loan_type, cibil_score, loan_tenure, loan_amount, loan_tenure_unit]):
-            return Response({'error': 'one of the fields is missing'}, status=status.HTTP_400_BAD_REQUEST)
+        # creating a nbfc master instance and checking if nbfc is present in the nbfc branch master
+        master_instance = None
+        if assigned_nbfc:
+            master_instance = NbfcBranchMaster.objects.filter(id=assigned_nbfc).first()
+        try:
+            # checking the mandatory fields
+            if any(value is None or value == '' for value in
+                   [user_id, loan_type, request_type, cibil_score, credit_limit]):
+                return Response({'error': 'one of the fields is missing'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # typecasting into model oriented fields
-        user_id = int(user_id)
-        cibil_score = int(cibil_score)
-        loan_tenure = int(loan_tenure)
-        loan_amount = float(loan_amount)
+            # assuming amount to be the credit limit assigned if amount not decided
+            amount = int(payload.get('amount', credit_limit))
 
-        # case when a user has already assigned nbfc
-        if assigned_nbfc_id:
-            if str(assigned_nbfc_id) in settings.NO_CHANGE_NBFC_LIST:
+            # checking the case if there's an assigned nbfc having available_cash with it to avoid further calculations
+            if assigned_nbfc:
+                str_due_date = due_date.strftime('%Y-%m-%d')
+                try:
+                    cash_flow_data = get_cash_flow_data(assigned_nbfc, str_due_date).json()
+                except Exception as e:
+                    error_message = str(e)
+                    return Response({'error': error_message}, status=500)
+                if cash_flow_data and cash_flow_data.get('available_cash_flow') >= amount:
+                    """
+                    store the loan instance and the logs for the particular loan instance
+                    """
+                    return Response({
+                        'message': 'no change in nbfc is required as the assigned nbfc has available cash flow',
+                        'assigned_nbfc': assigned_nbfc
+                    }, status=status.HTTP_200_OK)
+
+            tenure_days = 0
+            if loan_type == 'PD':
                 """
-                nbfc will not be changed if already assigned for some cases like Unity Bank
+                case of Payday loans
                 """
+                tenure_days = 45
+            elif loan_type.startswith('E') and loan_type[1:].isdigit():
+                """
+                case of EMI loans
+                """
+                emi_duration = int(loan_type[1:])
+                tenure_days = emi_duration * 30
+
+            tenure_days = timedelta(tenure_days)
+            eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
+                loan_type=loan_type,
+                min_cibil_score__lte=cibil_score,
+                min_loan_tenure__lte=tenure_days,
+                max_loan_tenure__gte=tenure_days,
+                min_loan_amount__lte=amount,
+                max_loan_amount__gte=amount,
+                should_check=True
+            )
+
+            eligible_branches_list = list(eligibility_queryset.values('nbfc').distinct())
+            eligible_branches_list = [item['nbfc'] for item in eligible_branches_list]
+            eligible_branches_list = Common.block_nbfcs_having_full_hold_cash(eligible_branches_list, due_date)
+            eligible_branches_list = Common.block_nbfcs_that_are_to_be_blocked(eligible_branches_list)
+
+            common_instance = Common()
+
+            if assigned_nbfc:
+                if assigned_nbfc in eligible_branches_list:
+                    return Response({
+                        'data': {
+                            'user_id': user_id,
+                            'assigned_nfbc': assigned_nbfc
+                        },
+                        'message': 'No update in nbfc is required for the user'
+                    }, status=status.HTTP_200_OK)
+                else:
+                    """
+                    change the old nbfc to a new nbfc using the helper function
+                    """
+                    updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(
+                        branches_list=eligible_branches_list,
+                        user_type=user_type,
+                        sanctioned_amount=amount)
+                    return Response({
+                        'data': {
+                            'user_id': user_id,
+                            'assigned_nbfc': assigned_nbfc,
+                            'updated_nbfc': updated_nbfc_id
+                        },
+                        'message': 'This is the nbfc updated for this user'
+                    }, status=status.HTTP_200_OK)
+            else:
+                """
+                book a new nbfc using the helper function
+                """
+                updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(branches_list=eligible_branches_list,
+                                                                                 user_type=user_type,
+                                                                                 sanctioned_amount=amount)
                 return Response({
                     'data': {
                         'user_id': user_id,
-                        'assigned_nbfc': assigned_nbfc_id
+                        'assigned nbfc': updated_nbfc_id
                     },
-                    'message': 'No change in  nbfc is required because assigned nbfc is listed in no-update nbfc list'
+                    'message': 'This is the nbfc assigned to this new user'
                 }, status=status.HTTP_200_OK)
-
-            hold_cash = 0.0
-            hold_cash_instance = HoldCashData.objects.filter(nbfc_id=assigned_nbfc_id,
-                                                             start_date__lte=due_date,
-                                                             end_date__gte=due_date).first()
-            if hold_cash_instance:
-                hold_cash = hold_cash_instance.hold_cash
-            if hold_cash == 100:
-                return Response({
-                    'data': {
-                        'user_id': user_id,
-                        'assigned_nbfc': assigned_nbfc_id
-                    },
-                    'message': 'No change in nbfc is required because of 100 percent hold cash of assigned nbfc'
-                }, status=status.HTTP_200_OK)
-
-            str_due_date = due_date.strftime('%Y-%m-%d')
-            cash_flow_data = get_cash_flow_data(assigned_nbfc_id, str_due_date).json()
-            available_credit_line = cash_flow_data.get('available_cash_flow', None)
-
-            if available_credit_line >= loan_amount:
-                return Response({
-                    'data': {
-                        'user_id': user_id,
-                        "assigned_nbfc": assigned_nbfc_id
-                    },
-                    'message': 'no change in nbfc is required because of already available credit line with the '
-                               'assigned nbfc'
-                }, status=status.HTTP_200_OK)
-
-        if loan_tenure_unit == 'days':
-            loan_tenure = timedelta(loan_tenure)
-        elif loan_tenure_unit == 'months':
-            loan_tenure = timedelta(loan_tenure * 30)  # Assuming an average of 30 days in a month
-        elif loan_tenure_unit == 'years':
-            loan_tenure = timedelta(loan_tenure * 365)  # Assuming 365 days in a year
-
-        eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
-            loan_type=loan_type,
-            min_cibil_score__lte=cibil_score,
-            min_loan_tenure__lte=loan_tenure,
-            max_loan_tenure__gte=loan_tenure,
-            min_loan_amount__lte=loan_amount,
-            max_loan_amount__gte=loan_amount,
-            should_check=True
-        )
-
-        eligible_branches_list = list(eligibility_queryset.values('nbfc').distinct())
-        eligible_branches_list = [item['nbfc'] for item in eligible_branches_list]
-
-        if len(eligible_branches_list) == 0:
-            return Response({"message": "No branch is eligible for nbfc updation"},
-                            status=status.HTTP_404_NOT_FOUND)
-
-        common_instance = Common()
-        updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(branches_list=eligible_branches_list,
-                                                                         old_user=old_user,
-                                                                         sanctioned_amount=loan_amount)
-
-        if updated_nbfc_id == -1:
-            return Response({'error': 'something went wrong'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        return Response({
-            'data': {
-                'user_id': user_id,
-                'assigned_nbfc': assigned_nbfc_id,
-                'updated_nbfc_id': updated_nbfc_id,
-            },
-            'message': 'nbfc is updated for the user'
-        }, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class NBFCEligibilityViewSet(ModelViewSet):

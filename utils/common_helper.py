@@ -1,5 +1,8 @@
 from datetime import date, timedelta, datetime
 from django.db.models import Sum
+from django.conf import settings
+
+import cash_flow.models
 from cash_flow.models import (CollectionAndLoanBookedData, ProjectionCollectionData,
                               CapitalInflowData, HoldCashData, NbfcBranchMaster)
 from cash_flow.external_calls import get_cash_flow_data
@@ -174,12 +177,12 @@ class Common:
 
     def get_nbfc_for_loan_to_be_booked(self, branches_list: list, sanctioned_amount: float,
                                        due_date: date = datetime.now(),
-                                       old_user: bool = True) -> int:
+                                       user_type: str = True) -> int:
         """
         this helper function helps to get the nbfc id for the loan to be booked if the user
         is new or old, and checking other conditions if there is available credit line or not
         :param due_date: a date field representing the date field
-        :param old_user: a boolean that tells if a user is new or old
+        :param user_type: string that tells if a user is new or old as 'O' or 'N'
         :param branches_list: a list containing nbfc_id's representing eligible branches
         :param sanctioned_amount: a float representing sanctioned/applied amount
         :return: the nbfc id as an integer field, it will return -1 in case of no nbfc is found
@@ -191,7 +194,7 @@ class Common:
             cash_flow_data = get_cash_flow_data(branch_id, str_due_date).json()
             if cash_flow_data:
                 available_credit_line = cash_flow_data.get('available_cash_flow', None)
-                if old_user:
+                if user_type == 'O':
                     old_user_percentage = cash_flow_data.get('old_user_percentage', None)
                     available_credit_line = (available_credit_line * old_user_percentage) / 100
                 else:
@@ -218,3 +221,54 @@ class Common:
             min_overbooked_ratio_branch = min(overbooked_data, key=lambda x: x['ratio'])
             return min_overbooked_ratio_branch['id']
         return -1
+
+    @staticmethod
+    def block_nbfcs_having_full_hold_cash(eligible_branches_list: list, due_date: date) -> list:
+        """
+        helper to return a refined list by blocking nbfcs having full hold cash from the eligible_branches_list
+        :param eligible_branches_list: a list
+        :param due_date: a date-field
+        :return:
+        """
+        nbfcs_to_be_blocked = []
+        for nbfc in eligible_branches_list:
+            hold_cash_instance = cash_flow.models.HoldCashData.objects.filter(nbfc=nbfc,
+                                                                              start_date__lte=due_date,
+                                                                              end_date__gte=due_date).first()
+            if hold_cash_instance:
+                if hold_cash_instance.hold_cash == 100:
+                    nbfcs_to_be_blocked.append(nbfc)
+        return [x for x in eligible_branches_list if x not in nbfcs_to_be_blocked]
+
+    @staticmethod
+    def block_nbfcs_that_are_to_be_blocked(eligible_branches_list: list) -> list:
+        """
+        this helper function returns the refined nbfc list ny blocking the nbfcs that are to be blocked
+        like that of Unity
+        :param eligible_branches_list: a list containing eligible nbfcs
+        :return: a further refined list containing nbfcs
+        """
+        nbfcs_to_be_blocked = settings.NO_CHANGE_NBFC_LIST
+        return [x for x in eligible_branches_list if x not in nbfcs_to_be_blocked]
+
+    @staticmethod
+    def book_the_loan_instance_with_the_logs(credit_limit, loan_type, request_type, log_text, user_id, user_type,
+                                             loan_status, cibil_score, is_booked=False, assigned_nbfc=None,
+                                             updated_nbfc=None, loan_id=None,):
+        """
+        helper function to book the loan_instance and also log the same in LoanBookedLogs in models.py
+        :param credit_limit:
+        :param loan_type:
+        :param request_type:
+        :param log_text:
+        :param user_id:
+        :param user_type:
+        :param loan_status:
+        :param cibil_score:
+        :param is_booked:
+        :param assigned_nbfc:
+        :param updated_nbfc:
+        :param loan_id:
+        :return:
+        """
+        pass
