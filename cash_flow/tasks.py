@@ -6,7 +6,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from cash_flow.external_calls import (get_due_amount_response, get_collection_poll_response, get_nbfc_list,
                                       get_collection_amount_response, get_loan_booked_data)
 from cash_flow.models import (NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster,
-                              CollectionAndLoanBookedData)
+                              CollectionAndLoanBookedData, CollectionLogs)
 from utils.common_helper import Common
 from cash_flow_prediction.celery import celery_error_email
 
@@ -115,8 +115,10 @@ def populate_nbfc_branch_master():
 @celery_error_email
 def populate_collection_amount():
     """
-    celery task to populate the collection amount in models.CCollectionAndLoanBookedData
+    celery task to populate the collection amount in models.CollectionAndLoanBookedData
     for a nbfc's for a particular due_date
+    the celery task would also log the changes into the models.CollectionLogs for every change pre
+    celery task and post celery task collection amount
     """
     due_date = datetime.now()
     str_due_date = due_date.strftime('%Y-%m-%d')
@@ -139,7 +141,26 @@ def populate_collection_amount():
             # If the record already existed, update its collection field
             if not created:
                 collection_instance.collection = collection_amount
+                # calculating the pre save amount of collection present in the db
+                pre_saved_collection_amount = CollectionAndLoanBookedData.objects.filter(
+                    nbfc=nbfc_instance,
+                    due_date=due_date
+                ).first().collection
+                amount_diff = collection_amount - pre_saved_collection_amount
+                # saving the collection log too
+                collection_log_instance = CollectionLogs(
+                    collection=collection_instance,
+                    amount=amount_diff
+                )
+                collection_log_instance.save()
                 collection_instance.save()
+            else:
+                # case of having the first log of this particular nbfc and due_date
+                collection_log_instance = CollectionLogs(
+                    collection=collection_instance,
+                    amount=collection_amount
+                )
+                collection_log_instance.save()
 
 
 @shared_task()
