@@ -4,7 +4,7 @@ from django.conf import settings
 
 import cash_flow.models
 from cash_flow.models import (CollectionAndLoanBookedData, ProjectionCollectionData,
-                              CapitalInflowData, HoldCashData, NbfcBranchMaster)
+                              CapitalInflowData, HoldCashData, NbfcBranchMaster, LoanDetail, LoanBookedLogs)
 from cash_flow.external_calls import get_cash_flow_data
 
 
@@ -252,23 +252,31 @@ class Common:
         return [x for x in eligible_branches_list if x not in nbfcs_to_be_blocked]
 
     @staticmethod
-    def book_the_loan_instance_with_the_logs(credit_limit, loan_type, request_type, log_text, user_id, user_type,
-                                             loan_status, cibil_score, is_booked=False, assigned_nbfc=None,
-                                             updated_nbfc=None, loan_id=None,):
+    def book_the_loan_instance_with_the_logs(credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
+                                             loan_amount, is_booked=False, assigned_nbfc=None,
+                                             updated_nbfc=None, loan_id=None):
         """
-        helper function to book the loan_instance and also log the same in LoanBookedLogs in models.py
-        :param credit_limit:
-        :param loan_type:
-        :param request_type:
-        :param log_text:
-        :param user_id:
-        :param user_type:
-        :param loan_status:
-        :param cibil_score:
-        :param is_booked:
-        :param assigned_nbfc:
-        :param updated_nbfc:
-        :param loan_id:
-        :return:
+        helper function to book the loan with logging in models.LoanBookedLogs
+        we have to book the loans at the loan application level and loan applied status
+        if at the loan application status loan_status will be 'I' and the is booked will be true and request
+        type will be 'LAN' and the amount applied by the user will be booked but first checking the loan instance if
+        present or not from the credit limit request type
+
+        :param credit_limit: credit limit assigned to the user
+        :param loan_type: loan type of the user payday or emi loans
+        :param request_type: request type of the user that is from credit_limit, loan_application or loan_applied
+        :param user_id: user_id of the user -> int
+        :param user_type: defines whether the user if old or new
+        :param cibil_score: cibil score assigned to the user -> int
+        :param loan_amount: loan amount of the user that is to be booked
+        :param is_booked: is_booked tells whether the loan is previously being booked
+        :param assigned_nbfc: nbfc that was the assigned to the user
+        :param updated_nbfc: nbfc that is updated from the assigned one for the user
+        :param loan_id: represents the loan id of the user
+        :return: void
         """
-        pass
+        loan_detail_instance = LoanDetail.objects.filter(loan_id=loan_id)
+
+
+
+

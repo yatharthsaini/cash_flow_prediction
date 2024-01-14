@@ -487,10 +487,6 @@ class BookNBFCView(APIView):
         else:
             due_date = datetime.now()
 
-        # creating a nbfc master instance and checking if nbfc is present in the nbfc branch master
-        master_instance = None
-        if assigned_nbfc:
-            master_instance = NbfcBranchMaster.objects.filter(id=assigned_nbfc).first()
         try:
             # checking the mandatory fields
             if any(value is None or value == '' for value in
@@ -517,6 +513,7 @@ class BookNBFCView(APIView):
                         'assigned_nbfc': assigned_nbfc
                     }, status=status.HTTP_200_OK)
 
+            # filtering the eligible nbfcs based on the criteria
             tenure_days = 0
             if loan_type == 'PD':
                 """
@@ -531,8 +528,11 @@ class BookNBFCView(APIView):
                 tenure_days = emi_duration * 30
 
             tenure_days = timedelta(tenure_days)
+            eligibility_loan_type = 'PD'
+            if loan_type is not 'PD':
+                eligibility_loan_type = 'EMI'
             eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
-                loan_type=loan_type,
+                loan_type=eligibility_loan_type,
                 min_cibil_score__lte=cibil_score,
                 min_loan_tenure__lte=tenure_days,
                 max_loan_tenure__gte=tenure_days,
@@ -547,7 +547,6 @@ class BookNBFCView(APIView):
             eligible_branches_list = Common.block_nbfcs_that_are_to_be_blocked(eligible_branches_list)
 
             common_instance = Common()
-
             if assigned_nbfc:
                 if assigned_nbfc in eligible_branches_list:
                     return Response({
@@ -565,6 +564,21 @@ class BookNBFCView(APIView):
                         branches_list=eligible_branches_list,
                         user_type=user_type,
                         sanctioned_amount=amount)
+
+                    # changing the loan instance and logs
+                    Common.book_the_loan_instance_with_the_logs(
+                        credit_limit=credit_limit,
+                        user_type=user_type,
+                        loan_type=loan_type,
+                        user_id=user_id,
+                        request_type=request_type,
+                        cibil_score=cibil_score,
+                        is_booked=is_booked,
+                        assigned_nbfc=assigned_nbfc,
+                        updated_nbfc=updated_nbfc_id,
+                        loan_id=loan_id,
+                        loan_amount=amount
+                    )
                     return Response({
                         'data': {
                             'user_id': user_id,
@@ -580,6 +594,20 @@ class BookNBFCView(APIView):
                 updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(branches_list=eligible_branches_list,
                                                                                  user_type=user_type,
                                                                                  sanctioned_amount=amount)
+                # changing the loan instance and logs
+                Common.book_the_loan_instance_with_the_logs(
+                    credit_limit=credit_limit,
+                    user_type=user_type,
+                    loan_type=loan_type,
+                    user_id=user_id,
+                    request_type=request_type,
+                    cibil_score=cibil_score,
+                    is_booked=is_booked,
+                    assigned_nbfc=assigned_nbfc,
+                    updated_nbfc=updated_nbfc_id,
+                    loan_id=loan_id,
+                    loan_amount=amount
+                )
                 return Response({
                     'data': {
                         'user_id': user_id,
