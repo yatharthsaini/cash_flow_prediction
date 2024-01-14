@@ -247,4 +247,4 @@ class CollectionLogs(CreatedUpdatedAtMixin):
     """
     collection = models.ForeignKey(CollectionAndLoanBookedData, on_delete=models.CASCADE)
     amount = models.FloatField()
-    log_text = models.CharField(max_length=21, choices=LOG_REASON_CHOICES)
+    log_text = models.CharField(max_length=50, default='Collection amount updated')
