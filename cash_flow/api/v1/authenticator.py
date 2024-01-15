@@ -7,7 +7,6 @@ from rest_framework import exceptions
 
 
 class CustomAuthentication(authentication.BaseAuthentication):
-    TOKEN = os.environ.get('TOKEN')  # Replace with your desired API key
 
     def authenticate(self, request):
         url = settings.TOKEN_AUTHENTICATION_URL

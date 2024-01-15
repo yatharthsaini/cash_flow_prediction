@@ -13,10 +13,12 @@ from cash_flow.models import (HoldCashData, CapitalInflowData, UserRatioData, Nb
                               NBFCEligibilityCashFlowHead, LoanDetail, LoanBookedLogs)
 from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer
 from cash_flow.external_calls import get_cash_flow_data
+from cash_flow.api.v1.authenticator import CustomAuthentication
 from utils.common_helper import Common
 
 
 class NBFCBranchView(APIView):
+    permission_classes = CustomAuthentication
 
     def post(self, request):
         """
@@ -67,6 +69,7 @@ class NBFCBranchView(APIView):
 
 
 class CapitalInflowDataView(APIView):
+    permission_classes = CustomAuthentication
 
     def post(self, request):
         """
@@ -155,6 +158,7 @@ class CapitalInflowDataView(APIView):
 
 
 class HoldCashDataView(APIView):
+    permission_classes = CustomAuthentication
 
     def post(self, request):
         """
@@ -242,6 +246,7 @@ class HoldCashDataView(APIView):
 
 
 class UserRatioDataView(APIView):
+    permission_classes = CustomAuthentication
 
     def post(self, request):
         """
@@ -333,6 +338,7 @@ class UserRatioDataView(APIView):
 
 
 class GetCashFlowView(BaseModelViewSet):
+
     """
     api view for getting the cash flow data from db to be passed on to front-end
     real time fields are to be returned in real time that are : collection, loan_booked, carry_forward,
@@ -340,6 +346,7 @@ class GetCashFlowView(BaseModelViewSet):
     static fields to be returned that are: capital_inflow, hold_cash, and user_ratio
     payload contains : nbfc in the form of nbfc_id and a due_date
     """
+    permission_classes = CustomAuthentication
 
     def get(self, request):
         payload = request.query_params
@@ -450,9 +457,10 @@ class BookNBFCView(APIView):
     """
     api view to book a loan and log the loan changes in the loan booked logs and change nbfc according to the
     """
+    permission_classes = CustomAuthentication
 
     def get(self, request):
-        """
+        """s
         :param request:
         request type i.e. whether is it from the credit limit, loan_application or loan_applied
         assigned_nfbc_id: will contain the nbfc id : a non-mandatory field and will be none in the case
@@ -553,7 +561,6 @@ class BookNBFCView(APIView):
                 max_loan_amount__gte=amount,
                 should_check=True
             )
-
             eligible_branches_list = list(eligibility_queryset.values('nbfc').distinct())
             eligible_branches_list = [item['nbfc'] for item in eligible_branches_list]
             eligible_branches_list = Common.block_nbfcs_having_full_hold_cash(eligible_branches_list, due_date)
@@ -639,6 +646,7 @@ class NBFCEligibilityViewSet(ModelViewSet):
     models.NBFCEligibilityCashFlowHead
     """
     serializer_class = NBFCEligibilityCashFlowHeadSerializer
+    permission_classes = CustomAuthentication
     queryset = NBFCEligibilityCashFlowHead.objects.all()
     lookup_field = 'nbfc'
 
