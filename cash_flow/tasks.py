@@ -4,7 +4,7 @@ from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ObjectDoesNotExist
 
 from cash_flow.external_calls import (get_due_amount_response, get_collection_poll_response, get_nbfc_list,
-                                      get_collection_amount_response, get_loan_booked_data)
+                                      get_collection_amount_response, get_loan_booked_data, get_failed_loan_data)
 from cash_flow.models import (NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster,
                               CollectionAndLoanBookedData, CollectionLogs)
 from utils.common_helper import Common
@@ -192,3 +192,17 @@ def populate_loan_booked_amount():
             if not created:
                 loan_booked_instance.loan_booked = loan_booked
                 loan_booked_instance.save()
+
+
+@shared_task()
+@celery_error_email
+def unbook_failed_loans():
+    """
+    this celery function will get the data for the failed loans and unbook the loans in models.LoanDetail
+    """
+    failed_loans_data = get_failed_loan_data().json()
+    if failed_loans_data:
+        failed_loans_list = failed_loans_data.get('data', None)
+        if failed_loans_list:
+            for loan_id in failed_loans_list:
+                Common.unbook_the_failed_loan(loan_id)

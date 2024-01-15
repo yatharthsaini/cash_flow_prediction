@@ -89,3 +89,12 @@ def get_cash_flow_data(nbfc_id: int, due_date: str) -> Any:
     return response
 
 
+def get_failed_loan_data() -> Any:
+    """
+    external call getting the failed loan data
+    :return: json response
+    """
+    url = settings.FAILED_LOAN_DATA
+    headers = get_common_headers()
+    response = requests.get(url=url, headers=headers, timeout=300)
+    return response

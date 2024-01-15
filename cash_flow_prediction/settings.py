@@ -290,6 +290,7 @@ NBFC_LIST_URL = os.environ.get('NBFC_LIST_URL')
 COLLECTION_AMOUNT_URL = os.environ.get('COLLECTION_AMOUNT_URL')
 LOAN_BOOKED_URL = os.environ.get('LOAN_BOOKED_URL')
 CASH_FLOW_URL = os.environ.get('CASH_FLOW_URL')
+FAILED_LOAN_DATA = os.environ.get('FAILED_LOAN_DATA')
 
 # Project Name
 PROJECT_NAME = os.environ.get('PROJECT_NAME')

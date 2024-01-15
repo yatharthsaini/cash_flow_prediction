@@ -253,29 +253,101 @@ class Common:
 
     @staticmethod
     def book_the_loan_instance_with_the_logs(credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
-                                             loan_amount, is_booked=False, assigned_nbfc=None,
-                                             updated_nbfc=None, loan_id=None):
+                                             nbfc, loan_amount=None, is_booked=False,
+                                             loan_id=None):
         """
         helper function to book the loan with logging in models.LoanBookedLogs
         we have to book the loans at the loan application level and loan applied status
         if at the loan application status loan_status will be 'I' and the is booked will be true and request
         type will be 'LAN' and the amount applied by the user will be booked but first checking the loan instance if
         present or not from the credit limit request type
-
-        :param credit_limit: credit limit assigned to the user
-        :param loan_type: loan type of the user payday or emi loans
-        :param request_type: request type of the user that is from credit_limit, loan_application or loan_applied
-        :param user_id: user_id of the user -> int
-        :param user_type: defines whether the user if old or new
-        :param cibil_score: cibil score assigned to the user -> int
-        :param loan_amount: loan amount of the user that is to be booked
-        :param is_booked: is_booked tells whether the loan is previously being booked
-        :param assigned_nbfc: nbfc that was the assigned to the user
-        :param updated_nbfc: nbfc that is updated from the assigned one for the user
-        :param loan_id: represents the loan id of the user
-        :return: void
+        :param credit_limit: int value for credit limit assigned to the user
+        :param loan_type:
+        :param request_type:
+        :param user_id:
+        :param user_type:
+        :param cibil_score:
+        :param loan_amount:
+        :param is_booked:
+        :param nbfc: nbfc to be booked in the loan detail
+        :param loan_id:
+        :return:
         """
-        loan_detail_instance = LoanDetail.objects.filter(loan_id=loan_id)
+        if request_type == 'LAN':
+            # booking the loan instance with the loan status I and loan_id is None
+            nbfc_master_instance = NbfcBranchMaster.objects.filter(id=nbfc).first()
+            if nbfc_master_instance:
+                loan_instance = LoanDetail(
+                    nbfc=nbfc_master_instance,
+                    loan_id=loan_id,
+                    user_id=user_id,
+                    cibil_score=cibil_score,
+                    credit_limit=credit_limit,
+                    amount=credit_limit,
+                    loan_type=loan_type,
+                    user_type=user_type,
+                    is_booked=is_booked,
+                    status='I'
+                )
+                loan_instance.save()
+                # logging the loan logs
+                loan_log_instance = LoanBookedLogs(
+                    loan=loan_instance,
+                    amount=credit_limit,
+                    log_text='Loan booked with the credit limit',
+                    request_type=request_type
+                )
+                loan_log_instance.save()
+        elif request_type == 'LAD':
+            # booking the actual amount to be booked
+            nbfc_master_instance = NbfcBranchMaster.objects.filter(id=nbfc).first()
+            if  nbfc_master_instance:
+                loan_detail_instance = LoanDetail(
+                    nbfc=nbfc_master_instance,
+                    loan_id=loan_id,
+                    loan_type=loan_type,
+                    user_id=user_id,
+                    cibil_score=cibil_score,
+                    credit_limit=credit_limit,
+                    loan_amount=loan_amount,
+                    user_type=user_type,
+                    is_booked=is_booked,
+                    status='P'
+                )
+                loan_detail_instance.save()
+
+                loan_log_instance = LoanBookedLogs(
+                    loan=loan_detail_instance,
+                    request_type=request_type,
+                    amount=loan_amount,
+                    log_text='Loan booked with the actual amount'
+                )
+                loan_log_instance.save()
+
+    @staticmethod
+    def unbook_the_failed_loan(loan_id):
+        """
+        this function unbooks the loan id as the loan is being failed in models.LoanDetail and also logging in
+        models.LoanBookedLogs
+        :param loan_id: the int representing the loan id
+        :return:
+        """
+        loan_detail_instance = LoanDetail.objects.filter(loan_id=loan_id).first()
+        if loan_detail_instance:
+            loan_detail_instance.status = 'F'
+            unbooked_amount = loan_detail_instance.amount
+            loan_log_instance = LoanBookedLogs(
+                loan=loan_detail_instance,
+                amount=unbooked_amount,
+                request_type='LF',
+                log_text='Unbooking the amount due to loan failure'
+            )
+            loan_log_instance.save()
+            # and also un_booking the loan amount
+            loan_detail_instance.delete()
+
+
+
 
 
 
