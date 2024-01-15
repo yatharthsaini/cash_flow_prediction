@@ -1,7 +1,10 @@
 from datetime import date, timedelta, datetime
 from django.db.models import Sum
+from django.conf import settings
+
+import cash_flow.models
 from cash_flow.models import (CollectionAndLoanBookedData, ProjectionCollectionData,
-                              CapitalInflowData, HoldCashData, NbfcBranchMaster)
+                              CapitalInflowData, HoldCashData, NbfcBranchMaster, LoanDetail, LoanBookedLogs)
 from cash_flow.external_calls import get_cash_flow_data
 
 
@@ -174,12 +177,12 @@ class Common:
 
     def get_nbfc_for_loan_to_be_booked(self, branches_list: list, sanctioned_amount: float,
                                        due_date: date = datetime.now(),
-                                       old_user: bool = True) -> int:
+                                       user_type: str = True) -> int:
         """
         this helper function helps to get the nbfc id for the loan to be booked if the user
         is new or old, and checking other conditions if there is available credit line or not
         :param due_date: a date field representing the date field
-        :param old_user: a boolean that tells if a user is new or old
+        :param user_type: string that tells if a user is new or old as 'O' or 'N'
         :param branches_list: a list containing nbfc_id's representing eligible branches
         :param sanctioned_amount: a float representing sanctioned/applied amount
         :return: the nbfc id as an integer field, it will return -1 in case of no nbfc is found
@@ -191,7 +194,7 @@ class Common:
             cash_flow_data = get_cash_flow_data(branch_id, str_due_date).json()
             if cash_flow_data:
                 available_credit_line = cash_flow_data.get('available_cash_flow', None)
-                if old_user:
+                if user_type == 'O':
                     old_user_percentage = cash_flow_data.get('old_user_percentage', None)
                     available_credit_line = (available_credit_line * old_user_percentage) / 100
                 else:
@@ -218,3 +221,62 @@ class Common:
             min_overbooked_ratio_branch = min(overbooked_data, key=lambda x: x['ratio'])
             return min_overbooked_ratio_branch['id']
         return -1
+
+    @staticmethod
+    def block_nbfcs_having_full_hold_cash(eligible_branches_list: list, due_date: date) -> list:
+        """
+        helper to return a refined list by blocking nbfcs having full hold cash from the eligible_branches_list
+        :param eligible_branches_list: a list
+        :param due_date: a date-field
+        :return:
+        """
+        nbfcs_to_be_blocked = []
+        for nbfc in eligible_branches_list:
+            hold_cash_instance = cash_flow.models.HoldCashData.objects.filter(nbfc=nbfc,
+                                                                              start_date__lte=due_date,
+                                                                              end_date__gte=due_date).first()
+            if hold_cash_instance:
+                if hold_cash_instance.hold_cash == 100:
+                    nbfcs_to_be_blocked.append(nbfc)
+        return [x for x in eligible_branches_list if x not in nbfcs_to_be_blocked]
+
+    @staticmethod
+    def block_nbfcs_that_are_to_be_blocked(eligible_branches_list: list) -> list:
+        """
+        this helper function returns the refined nbfc list ny blocking the nbfcs that are to be blocked
+        like that of Unity
+        :param eligible_branches_list: a list containing eligible nbfcs
+        :return: a further refined list containing nbfcs
+        """
+        nbfcs_to_be_blocked = settings.NO_CHANGE_NBFC_LIST
+        return [x for x in eligible_branches_list if x not in nbfcs_to_be_blocked]
+
+    @staticmethod
+    def book_the_loan_instance_with_the_logs(credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
+                                             loan_amount, is_booked=False, assigned_nbfc=None,
+                                             updated_nbfc=None, loan_id=None):
+        """
+        helper function to book the loan with logging in models.LoanBookedLogs
+        we have to book the loans at the loan application level and loan applied status
+        if at the loan application status loan_status will be 'I' and the is booked will be true and request
+        type will be 'LAN' and the amount applied by the user will be booked but first checking the loan instance if
+        present or not from the credit limit request type
+
+        :param credit_limit: credit limit assigned to the user
+        :param loan_type: loan type of the user payday or emi loans
+        :param request_type: request type of the user that is from credit_limit, loan_application or loan_applied
+        :param user_id: user_id of the user -> int
+        :param user_type: defines whether the user if old or new
+        :param cibil_score: cibil score assigned to the user -> int
+        :param loan_amount: loan amount of the user that is to be booked
+        :param is_booked: is_booked tells whether the loan is previously being booked
+        :param assigned_nbfc: nbfc that was the assigned to the user
+        :param updated_nbfc: nbfc that is updated from the assigned one for the user
+        :param loan_id: represents the loan id of the user
+        :return: void
+        """
+        loan_detail_instance = LoanDetail.objects.filter(loan_id=loan_id)
+
+
+
+

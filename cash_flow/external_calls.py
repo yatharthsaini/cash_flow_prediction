@@ -81,11 +81,11 @@ def get_cash_flow_data(nbfc_id: int, due_date: str) -> Any:
     external call for getting the cash_flow_data for a particular nbfc_id and due_date
     """
     url = settings.CASH_FLOW_URL
-    payload = {
-        'nbfc_id': nbfc_id,
-        'due_date': due_date
+    params = {
+        "nbfc_id": nbfc_id,
+        "due_date": due_date
     }
-    response = requests.get(url=url, data=payload, timeout=300)
+    response = requests.get(url=url, params=params, timeout=300)
     return response
 
 

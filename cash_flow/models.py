@@ -1,5 +1,34 @@
 from django.db import models
 
+LOAN_TYPE_CHOICES = (
+        ('PD', 'PAYDAY'),
+        ('EMI', 'PERSONAL_LOAN')
+    )
+
+LOAN_STATUS_CHOICES = (
+        ('I', 'Initiated'),
+        ('P', 'Passed'),
+        ('F', 'Failed'),
+    )
+
+USER_TYPE_CHOICES = (
+    ('0', 'Old'),
+    ('N', 'New'),
+)
+
+LOG_REASON_CHOICES = (
+    ('nbfc_change', 'nbfc_change'),
+    ('credit_limit_assigned', 'credit_limit_assigned'),
+    ('loan_application', 'loan_application'),
+    ('loan_applied', 'loan_applied'),
+    ('loan_booked', 'loan_booked'),
+)
+REQUEST_TYPE = (
+    ('CL', 'Credit Limit'),
+    ('LAN', 'Loan Application'),
+    ('LAD', 'Loan Applied'),
+)
+
 
 class CreatedUpdatedAtMixin(models.Model):
     """
@@ -167,10 +196,7 @@ class NBFCEligibilityCashFlowHead(CreatedUpdatedAtMixin):
     """
     model for storing the NBFC eligibility parameters
     """
-    LOAN_TYPE_CHOICES = (
-        ('PD', 'PAYDAY'),
-        ('EMI', 'PERSONAL_LOAN')
-    )
+
     nbfc = models.ForeignKey(NbfcBranchMaster, on_delete=models.CASCADE)
     loan_type = models.CharField(max_length=3, choices=LOAN_TYPE_CHOICES)
     min_cibil_score = models.IntegerField()
@@ -185,3 +211,40 @@ class NBFCEligibilityCashFlowHead(CreatedUpdatedAtMixin):
 
     class Meta:
         ordering = ('-created_at',)
+
+
+class LoanDetail(CreatedUpdatedAtMixin):
+    """
+    model to store the loan detail fields such as loan_id, user_id, nbfc, credit_limit, amount, status
+    """
+    nbfc = models.ForeignKey(NbfcBranchMaster, on_delete=models.CASCADE)
+    credit_limit = models.FloatField()
+    loan_id = models.IntegerField(null=True)
+    loan_type = models.CharField(max_length=3, choices=LOAN_TYPE_CHOICES)
+    user_id = models.IntegerField()
+    amount = models.FloatField(null=True)
+    status = models.CharField(max_length=1, choices=LOAN_STATUS_CHOICES, default='I')
+    user_type = models.CharField(max_length=1, choices=USER_TYPE_CHOICES, default='O')
+    cibil_score = models.IntegerField()
+    is_booked = models.BooleanField(default=False)
+
+
+class LoanBookedLogs(CreatedUpdatedAtMixin):
+    """
+    model to store the loan booked logs of a particular loan
+    """
+    loan = models.ForeignKey(LoanDetail, on_delete=models.CASCADE)
+    amount = models.FloatField()
+    log_text = models.TextField()
+    request_type = models.CharField(max_length=3, choices=REQUEST_TYPE, default="CL")
+
+
+class CollectionLogs(CreatedUpdatedAtMixin):
+    """
+    models to store the collection logs of a particular loan
+    amount here is the difference of amount in collection between two celery tasks of populating the
+    collection amount
+    """
+    collection = models.ForeignKey(CollectionAndLoanBookedData, on_delete=models.CASCADE)
+    amount = models.FloatField()
+    log_text = models.CharField(max_length=50, default='Collection amount updated')
