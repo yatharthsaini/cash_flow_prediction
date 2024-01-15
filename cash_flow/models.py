@@ -16,17 +16,11 @@ USER_TYPE_CHOICES = (
     ('N', 'New'),
 )
 
-LOG_REASON_CHOICES = (
-    ('nbfc_change', 'nbfc_change'),
-    ('credit_limit_assigned', 'credit_limit_assigned'),
-    ('loan_application', 'loan_application'),
-    ('loan_applied', 'loan_applied'),
-    ('loan_booked', 'loan_booked'),
-)
 REQUEST_TYPE = (
     ('CL', 'Credit Limit'),
     ('LAN', 'Loan Application'),
     ('LAD', 'Loan Applied'),
+    ('LF', 'Loan failed')
 )
 
 
