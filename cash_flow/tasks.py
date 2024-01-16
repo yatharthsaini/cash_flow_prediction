@@ -150,6 +150,8 @@ def populate_collection_amount():
                 ).first()
                 if pre_saved_collection_instance:
                     pre_saved_collection_amount = pre_saved_collection_instance.collection
+                if collection_amount is None:
+                    collection_amount = 0
                 amount_diff = collection_amount - pre_saved_collection_amount
                 # saving the collection log too
                 collection_log_instance = CollectionLogs(

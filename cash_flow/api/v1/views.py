@@ -371,6 +371,8 @@ class GetCashFlowView(BaseModelViewSet):
 
             collection_data = Common.get_collection_and_last_day_balance(nbfc_id, due_date)
             collection = collection_data[0]
+            if collection is None:
+                collection = 0
             last_day_balance = collection_data[1]
 
             capital_inflow = Common.get_nbfc_capital_inflow(due_date, nbfc_id)
