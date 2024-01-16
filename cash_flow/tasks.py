@@ -3,7 +3,7 @@ from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
-from django.db.models import Q, Sum, When, Case, F
+from django.db.models import Sum, When, Case, F
 from cash_flow.external_calls import (get_due_amount_response, get_collection_poll_response, get_nbfc_list,
                                       get_collection_amount_response, get_loan_booked_data, get_failed_loan_data)
 from cash_flow.models import (NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster,
@@ -152,6 +152,8 @@ def populate_collection_amount():
                     pre_saved_collection_amount = pre_saved_collection_instance.collection
                 if collection_amount is None:
                     collection_amount = 0
+                if pre_saved_collection_amount is None:
+                    pre_saved_collection_amount = 0
                 amount_diff = collection_amount - pre_saved_collection_amount
                 # saving the collection log too
                 collection_log_instance = CollectionLogs(
