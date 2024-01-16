@@ -143,10 +143,13 @@ def populate_collection_amount():
             if not created:
                 collection_instance.collection = collection_amount
                 # calculating the pre save amount of collection present in the db
-                pre_saved_collection_amount = CollectionAndLoanBookedData.objects.filter(
+                pre_saved_collection_amount = 0
+                pre_saved_collection_instance = CollectionAndLoanBookedData.objects.filter(
                     nbfc=nbfc_instance,
                     due_date=due_date
-                ).first().collection
+                ).first()
+                if pre_saved_collection_instance:
+                    pre_saved_collection_amount = pre_saved_collection_instance.collection
                 amount_diff = collection_amount - pre_saved_collection_amount
                 # saving the collection log too
                 collection_log_instance = CollectionLogs(
