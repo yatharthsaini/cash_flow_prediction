@@ -470,62 +470,87 @@ class BookNBFCView(APIView):
         user_type = payload.get('user_type', 'O')
         due_date = datetime.now().date()
 
-        # try:
+        try:
+            amount = int(payload.get('amount', credit_limit))
+            available_cash = cache.get('available_balance', {}).get(assigned_nbfc, {}).get(user_type, 0)
+            if available_cash >= amount:
+                """
+                store the loan instance and the logs for the particular loan instance
+                """
+                task_for_loan_booking(
+                    credit_limit=credit_limit,
+                    user_type=user_type,
+                    loan_type=loan_type,
+                    user_id=user_id,
+                    request_type=request_type,
+                    cibil_score=cibil_score,
+                    nbfc_id=assigned_nbfc,
+                    loan_id=loan_id,
+                    loan_amount=amount
+                )
+                return Response({
+                    'message': 'no change in nbfc is required as the assigned nbfc has available cash flow',
+                    'assigned_nbfc': assigned_nbfc
+                }, status=status.HTTP_200_OK)
 
-        amount = int(payload.get('amount', credit_limit))
-        available_cash = cache.get('available_balance', {}).get(assigned_nbfc, {}).get(user_type, 0)
-        if available_cash >= amount:
-            """
-            store the loan instance and the logs for the particular loan instance
-            """
-            task_for_loan_booking(
-                credit_limit=credit_limit,
-                user_type=user_type,
-                loan_type=loan_type,
-                user_id=user_id,
-                request_type=request_type,
-                cibil_score=cibil_score,
-                nbfc_id=assigned_nbfc,
-                loan_id=loan_id,
-                loan_amount=amount
+            # filtering the eligible nbfcs based on the criteria
+            tenure_days = 45
+            if loan_type.startswith('E'):
+                """
+                case of EMI loans
+                """
+                tenure_days = int(loan_type[1:])
+
+            eligibility_loan_type = 'P'
+            if loan_type != 'P':
+                eligibility_loan_type = 'E'
+            eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
+                loan_type=eligibility_loan_type,
+                min_cibil_score__lte=cibil_score,
+                min_loan_tenure__lte=tenure_days,
+                max_loan_tenure__gte=tenure_days,
+                min_loan_amount__lte=amount,
+                max_loan_amount__gte=amount,
+                should_check=True
             )
-            return Response({
-                'message': 'no change in nbfc is required as the assigned nbfc has available cash flow',
-                'assigned_nbfc': assigned_nbfc
-            }, status=status.HTTP_200_OK)
+            eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
 
-        # filtering the eligible nbfcs based on the criteria
-        tenure_days = 45
-        if loan_type.startswith('E'):
-            """
-            case of EMI loans
-            """
-            tenure_days = int(loan_type[1:])
+            loan_booked_instance = LoanDetail.objects.filter(created_at__date=due_date,
+                                                             user_id=user_id).exclude(status='F').first()
+            loan_booked = False
+            if loan_booked_instance:
+                loan_booked = loan_booked_instance.is_booked
 
-        eligibility_loan_type = 'P'
-        if loan_type != 'P':
-            eligibility_loan_type = 'E'
-        eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
-            loan_type=eligibility_loan_type,
-            min_cibil_score__lte=cibil_score,
-            min_loan_tenure__lte=tenure_days,
-            max_loan_tenure__gte=tenure_days,
-            min_loan_amount__lte=amount,
-            max_loan_amount__gte=amount,
-            should_check=True
-        )
-        eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
+            common_instance = Common()
+            if assigned_nbfc:
+                if assigned_nbfc in eligible_branches_list:
+                    if not loan_booked:
+                        task_for_loan_booking(
+                            credit_limit=credit_limit,
+                            user_type=user_type,
+                            loan_type=loan_type,
+                            user_id=user_id,
+                            request_type=request_type,
+                            cibil_score=cibil_score,
+                            nbfc_id=assigned_nbfc,
+                            loan_id=loan_id,
+                            loan_amount=amount
+                        )
+                    return Response({
+                        'message': 'no change in nbfc is required as the assigned nbfc has available cash flow',
+                        'assigned_nbfc': assigned_nbfc
+                    }, status=status.HTTP_200_OK)
 
-        loan_booked_instance = LoanDetail.objects.filter(created_at__date=due_date,
-                                                         user_id=user_id).exclude(status='F').first()
-        loan_booked = False
-        if loan_booked_instance:
-            loan_booked = loan_booked_instance.is_booked
+                else:
+                    """
+                    change the old nbfc to a new nbfc using the helper function
+                    """
+                    updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(
+                        branches_list=eligible_branches_list,
+                        user_type=user_type,
+                        sanctioned_amount=amount)
 
-        common_instance = Common()
-        if assigned_nbfc:
-            if assigned_nbfc in eligible_branches_list:
-                if not loan_booked:
+                    # changing the loan instance and logs
                     task_for_loan_booking(
                         credit_limit=credit_limit,
                         user_type=user_type,
@@ -533,24 +558,25 @@ class BookNBFCView(APIView):
                         user_id=user_id,
                         request_type=request_type,
                         cibil_score=cibil_score,
-                        nbfc_id=assigned_nbfc,
+                        nbfc_id=updated_nbfc_id,
                         loan_id=loan_id,
                         loan_amount=amount
                     )
-                return Response({
-                    'message': 'no change in nbfc is required as the assigned nbfc has available cash flow',
-                    'assigned_nbfc': assigned_nbfc
-                }, status=status.HTTP_200_OK)
-
+                    return Response({
+                        'data': {
+                            'user_id': user_id,
+                            'assigned_nbfc': assigned_nbfc,
+                            'updated_nbfc': updated_nbfc_id
+                        },
+                        'message': 'This is the nbfc updated for this user'
+                    }, status=status.HTTP_200_OK)
             else:
                 """
-                change the old nbfc to a new nbfc using the helper function
+                book a new nbfc using the helper function
                 """
-                updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(
-                    branches_list=eligible_branches_list,
-                    user_type=user_type,
-                    sanctioned_amount=amount)
-
+                updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(branches_list=eligible_branches_list,
+                                                                                 user_type=user_type,
+                                                                                 sanctioned_amount=amount)
                 # changing the loan instance and logs
                 task_for_loan_booking(
                     credit_limit=credit_limit,
@@ -559,47 +585,20 @@ class BookNBFCView(APIView):
                     user_id=user_id,
                     request_type=request_type,
                     cibil_score=cibil_score,
-                    nbfc_id=updated_nbfc_id,
+                    nbfc=updated_nbfc_id,
                     loan_id=loan_id,
-                    loan_amount=amount
+                    loan_amount=amount,
                 )
-                return Response({
-                    'data': {
-                        'user_id': user_id,
-                        'assigned_nbfc': assigned_nbfc,
-                        'updated_nbfc': updated_nbfc_id
-                    },
-                    'message': 'This is the nbfc updated for this user'
-                }, status=status.HTTP_200_OK)
-        else:
-            """
-            book a new nbfc using the helper function
-            """
-            updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(branches_list=eligible_branches_list,
-                                                                             user_type=user_type,
-                                                                             sanctioned_amount=amount)
-            # changing the loan instance and logs
-            task_for_loan_booking(
-                credit_limit=credit_limit,
-                user_type=user_type,
-                loan_type=loan_type,
-                user_id=user_id,
-                request_type=request_type,
-                cibil_score=cibil_score,
-                nbfc=updated_nbfc_id,
-                loan_id=loan_id,
-                loan_amount=amount,
-            )
-        return Response({
-            'data': {
-                'user_id': user_id,
-                'assigned nbfc': updated_nbfc_id
-            },
-            'message': 'This is the nbfc assigned to this new user'
-        }, status=status.HTTP_200_OK)
-        # except Exception as e:
-        #     error_message = str(e)
-        #     return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({
+                'data': {
+                    'user_id': user_id,
+                    'assigned nbfc': updated_nbfc_id
+                },
+                'message': 'This is the nbfc assigned to this new user'
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            error_message = str(e)
+            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class NBFCEligibilityViewSet(ModelViewSet):
