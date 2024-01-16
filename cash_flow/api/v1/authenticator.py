@@ -33,7 +33,7 @@ class ServerAuthentication(authentication.BaseAuthentication):
     TOKEN = os.environ.get('TOKEN')  # Replace with your desired API key
 
     def authenticate(self, request):
-        token = request.META.get('TOKEN')
+        token = request.headers.get('TOKEN')
 
         if token == self.TOKEN:
             return None, None  # Authentication successful
