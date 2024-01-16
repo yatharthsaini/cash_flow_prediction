@@ -240,7 +240,6 @@ def populate_available_cash_flow(nbfc=None):
         filtered_dict['nbfc_id'] = nbfc
 
     due_date = datetime.now().date()
-    available_cash_flow_data = {}
     hold_cash_value = Common.get_hold_cash_value(due_date)
     capital_inflow_value = Common.get_nbfc_capital_inflow(due_date)
 
@@ -278,7 +277,7 @@ def populate_available_cash_flow(nbfc=None):
         cal_data[nbfc_id] = {
             'O': old_value,
             'N': new_value,
-            'total': available_cash_flow_data
+            'total': available_cash_flow
         }
 
     if nbfc:
@@ -310,7 +309,6 @@ def task_for_loan_booked(nbfc_id=None):
         total_amount=Sum('value')
     )
     loan_booked = dict(loan_booked_instance.values_list('nbfc_id', 'total_amount'))
-
     if nbfc_id:
         return loan_booked.get(nbfc_id, 0)
 
@@ -413,3 +411,4 @@ def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_t
         else:
             booked_data[nbfc_id] = {user_type: booked_amount, 'total': booked_amount}
         cache.set('available_balance', booked_data)
+

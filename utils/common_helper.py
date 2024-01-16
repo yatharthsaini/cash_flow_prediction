@@ -196,6 +196,7 @@ class Common:
             for i in available_credit_line
         }
         or_ratio = dict(sorted(or_ratio.items()), key=lambda items: items[1])
+
         for i in or_ratio:
             return i
 
@@ -266,7 +267,9 @@ class Common:
 
         user_ratio_value = {}
         for item in user_ratio_instance:
-            user_ratio_value[item.pop(0)] = item
+            item_list = list(item)
+            nbfc_id = item_list.pop(0)
+            user_ratio_value[nbfc_id] = tuple(item_list)
 
         if nbfc_id:
             return user_ratio_value.get(nbfc_id, [100, 0])
