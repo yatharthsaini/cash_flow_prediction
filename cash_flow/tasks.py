@@ -236,8 +236,8 @@ def populate_available_cash_flow(nbfc=None):
 
     due_date = datetime.now().date()
     available_cash_flow_data = {}
-    hold_cash_value = Common.get_hold_cash_value(due_date, nbfc)
-    capital_inflow_value = Common.get_nbfc_capital_inflow(due_date, nbfc)
+    hold_cash_value = Common.get_hold_cash_value(due_date)
+    capital_inflow_value = Common.get_nbfc_capital_inflow(due_date)
 
     prediction_amount_value = dict(ProjectionCollectionData.objects.filter(
         **filtered_dict,
@@ -245,7 +245,7 @@ def populate_available_cash_flow(nbfc=None):
         total_amount=Sum('amount')
     ).values_list('nbfc_id', 'total_amount'))
 
-    user_ratio_value = Common.get_user_ratio(due_date, nbfc)
+    user_ratio_value = Common.get_user_ratio(due_date)
 
     collection_value = dict((CollectionAndLoanBookedData.objects.filter(due_date=due_date, **filtered_dict).
                              values_list('nbfc_id', 'last_day_balance')))
