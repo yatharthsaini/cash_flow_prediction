@@ -1,8 +1,8 @@
 from django.db import models
 
 LOAN_TYPE_CHOICES = (
-        ('PD', 'PAYDAY'),
-        ('EMI', 'PERSONAL_LOAN')
+        ('P', 'PAYDAY'),
+        ('E', 'PERSONAL_LOAN')
     )
 
 LOAN_STATUS_CHOICES = (
@@ -131,6 +131,8 @@ class CollectionAndLoanBookedData(CreatedUpdatedAtMixin):
     due_date = models.DateField()
     collection = models.FloatField(null=True)
     loan_booked = models.FloatField(null=True)
+    last_day_balance = models.FloatField(default=0)
+
 
     def __str__(self):
         return (f"{self.nbfc} with due_date {self.due_date} with collection {self.collection} and "
@@ -194,8 +196,8 @@ class NBFCEligibilityCashFlowHead(CreatedUpdatedAtMixin):
     nbfc = models.ForeignKey(NbfcBranchMaster, on_delete=models.CASCADE)
     loan_type = models.CharField(max_length=3, choices=LOAN_TYPE_CHOICES)
     min_cibil_score = models.IntegerField()
-    min_loan_tenure = models.DurationField()
-    max_loan_tenure = models.DurationField()
+    min_loan_tenure = models.IntegerField()
+    max_loan_tenure = models.IntegerField()
     min_loan_amount = models.FloatField()
     max_loan_amount = models.FloatField()
     should_check = models.BooleanField(default=True)
@@ -214,7 +216,7 @@ class LoanDetail(CreatedUpdatedAtMixin):
     nbfc = models.ForeignKey(NbfcBranchMaster, on_delete=models.CASCADE)
     credit_limit = models.FloatField()
     loan_id = models.IntegerField(null=True)
-    loan_type = models.CharField(max_length=3, choices=LOAN_TYPE_CHOICES)
+    loan_type = models.CharField(max_length=5)
     user_id = models.IntegerField()
     amount = models.FloatField(null=True)
     status = models.CharField(max_length=1, choices=LOAN_STATUS_CHOICES, null=True)

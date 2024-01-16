@@ -2,11 +2,12 @@ from datetime import datetime, timedelta
 from celery import shared_task
 from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ObjectDoesNotExist
-
+from django.core.cache import cache
+from django.db.models import Q, Sum, When, Case, F
 from cash_flow.external_calls import (get_due_amount_response, get_collection_poll_response, get_nbfc_list,
                                       get_collection_amount_response, get_loan_booked_data, get_failed_loan_data)
 from cash_flow.models import (NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster,
-                              CollectionAndLoanBookedData, CollectionLogs)
+                              CollectionAndLoanBookedData, CollectionLogs, LoanDetail, LoanBookedLogs)
 from utils.common_helper import Common
 from cash_flow_prediction.celery import celery_error_email
 
@@ -204,5 +205,206 @@ def unbook_failed_loans():
     if failed_loans_data:
         failed_loans_list = failed_loans_data.get('data', None)
         if failed_loans_list:
-            for loan_id in failed_loans_list:
-                Common.unbook_the_failed_loan(loan_id)
+            loans = LoanDetail.objects.filter(loan_id__in=failed_loans_list, status='P')
+            for loan in loans.iterator(chunk_size=500):
+                loan.status = 'F'
+                unbooked_amount = loan.amount
+                loan_log_instance = LoanBookedLogs(
+                    loan=loan,
+                    amount=unbooked_amount,
+                    request_type='LF',
+                    log_text='Unbooking the amount due to loan failure'
+                )
+                nbfc_id = loan.nbfc
+                user_type = loan.user_type
+                available_balance = cache.get('available_balance', {})
+                available_balance[nbfc_id][user_type] += unbooked_amount
+                available_balance[nbfc_id]['total'] += unbooked_amount
+                cache.set('available_balance', available_balance)
+                loan_log_instance.save()
+
+
+@shared_task()
+@celery_error_email
+def populate_available_cash_flow(nbfc=None):
+    """
+    celery task to store json of nbfc id against available cash flow in the cache by repeated calculation
+    """
+    filtered_dict = {}
+    if nbfc:
+        filtered_dict['nbfc_id'] = nbfc
+
+    due_date = datetime.now().date()
+    available_cash_flow_data = {}
+    hold_cash_value = Common.get_hold_cash_value(due_date, nbfc)
+    capital_inflow_value = Common.get_nbfc_capital_inflow(due_date, nbfc)
+
+    prediction_amount_value = dict(ProjectionCollectionData.objects.filter(
+        **filtered_dict,
+        collection_date=due_date).values('nbfc_id').order_by('nbfc_id').annotate(
+        total_amount=Sum('amount')
+    ).values_list('nbfc_id', 'total_amount'))
+
+    user_ratio_value = Common.get_user_ratio(due_date, nbfc)
+
+    collection_value = dict((CollectionAndLoanBookedData.objects.filter(due_date=due_date, **filtered_dict).
+                             values_list('nbfc_id', 'last_day_balance')))
+
+    cal_data = {}
+    for nbfc_id in collection_value:
+        hold_cash = hold_cash_value.get(nbfc_id, 0)
+        if hold_cash == 100:
+            continue
+        prediction_cash_inflow = prediction_amount_value.get(nbfc_id, 0)
+        prev_day_carry_forward = collection_value.get(nbfc_id, 0)
+
+        capital_inflow = capital_inflow_value.get(nbfc_id, 0)
+
+        available_cash_flow = Common.get_available_cash_flow(prediction_cash_inflow, prev_day_carry_forward,
+                                                             capital_inflow, hold_cash)
+
+        user_ratio = user_ratio_value.get(nbfc_id, [100, 0])
+        old_ratio = user_ratio[0]
+        new_ratio = user_ratio[1]
+
+        old_value = (available_cash_flow * old_ratio) / 100
+        new_value = (available_cash_flow * new_ratio) / 100
+
+        cal_data[nbfc_id] = {
+            'O': old_value,
+            'N': new_value,
+            'total': available_cash_flow_data
+        }
+
+    if nbfc:
+        return cal_data.get(nbfc, {}).get('total', 0)
+    cache.set('available_balance', cal_data)
+
+
+@shared_task()
+@celery_error_email
+def task_for_loan_booked(nbfc_id=None):
+    """
+    celery task for loan booked
+    :return:
+    """
+    filtered_dict = {}
+    if nbfc_id:
+        filtered_dict['nbfc_id'] = nbfc_id
+
+    due_date = datetime.now().date()
+    loan_booked_instance = LoanDetail.objects.filter(created_at__date=due_date, is_booked=True,
+                                                     **filtered_dict).exclude(status='F')
+    loan_booked_instance = loan_booked_instance.annotate(
+        value=Case(
+            When(status='P', then=F('amount')),
+            default=F('credit_limit')
+        )
+    )
+    loan_booked_instance = loan_booked_instance.values('nbfc_id').order_by('nbfc_id').annotate(
+        total_amount=Sum('value')
+    )
+    loan_booked = dict(loan_booked_instance.values_list('nbfc_id', 'total_amount'))
+
+    if nbfc_id:
+        return loan_booked.get(nbfc_id, 0)
+
+    cache.set('loan_booked', loan_booked)
+
+
+@shared_task()
+@celery_error_email
+def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
+                          nbfc_id, loan_amount=None,
+                          loan_id=None):
+    """
+    helper function to book the loan with logging in models.LoanBookedLogs
+    we have to book the loans at the loan application level and loan applied status
+    if at the loan application status loan_status will be 'I' and the is booked will be true and request
+    type will be 'LAN' and the amount applied by the user will be booked but first checking the loan instance if
+    present or not from the credit limit request type
+    :param credit_limit: int value for credit limit assigned to the user
+    :param loan_type:
+    :param request_type:
+    :param user_id:
+    :param user_type:
+    :param cibil_score:
+    :param loan_amount:
+    :param nbfc_id: nbfc to be booked in the loan detail
+    :param loan_id:
+    :return:
+    """
+    due_date = datetime.now().date()
+    user_loan = LoanDetail.objects.filter(user_id=user_id, created_at__date=due_date).first()
+    loan_detail_id = None
+    if user_loan:
+        loan_detail_id = user_loan.id
+    diff_amount = 0
+    booked_amount = 0
+    if request_type == 'LAN':
+        loan_data = {
+            'nbfc_id': nbfc_id,
+            'user_id': user_id,
+            'cibil_score': cibil_score,
+            'credit_limit': credit_limit,
+            'loan_type': loan_type,
+            'user_type': user_type,
+            'is_booked': True,
+            'status': 'I'
+        }
+        loan_log = {
+            'amount': credit_limit,
+            'log_text': 'Loan booked with the credit limit',
+            'request_type': request_type
+        }
+        booked_amount = credit_limit
+
+    elif request_type == 'LAD':
+        loan_data = {
+            'nbfc_id': nbfc_id,
+            'loan_id': loan_id,
+            'loan_type': loan_type,
+            'user_id': user_id,
+            'cibil_score': cibil_score,
+            'credit_limit': credit_limit,
+            'amount': loan_amount,
+            'user_type': user_type,
+            'is_booked': True,
+            'status': 'P'
+        }
+        loan_log = {
+            'request_type': request_type,
+            'amount': loan_amount,
+            'log_text': 'Loan booked with the actual amount'
+        }
+        booked_amount = loan_amount
+        diff_amount = credit_limit - loan_amount
+    else:
+        loan_data = {
+            'nbfc_id': nbfc_id,
+            'loan_type': loan_type,
+            'user_id': user_id,
+            'cibil_score': cibil_score,
+            'credit_limit': credit_limit,
+            'user_type': user_type,
+        }
+        loan_log = {}
+
+    if loan_detail_id:
+        loan_data['id'] = loan_detail_id
+    loan = LoanDetail(**loan_data)
+    loan.save()
+    if loan_log:
+        LoanBookedLogs(loan=loan, **loan_log)
+    if booked_amount:
+        booked_data = cache.get('available_balance', {})
+        if booked_data:
+            booked_value = booked_data.get(nbfc_id, {}).get(user_type)
+            if booked_value is not None:
+                booked_data[nbfc_id][user_type] -= booked_amount + diff_amount
+                booked_data[nbfc_id]['total'] -= booked_amount + diff_amount
+            else:
+                booked_data[nbfc_id].update({user_type: booked_amount, 'total': booked_amount})
+        else:
+            booked_data[nbfc_id] = {user_type: booked_amount, 'total': booked_amount}
+        cache.set('available_balance', booked_data)

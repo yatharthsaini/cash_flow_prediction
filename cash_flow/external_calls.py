@@ -76,19 +76,6 @@ def get_loan_booked_data(due_date: str) -> Any:
     return response
 
 
-def get_cash_flow_data(nbfc_id: int, due_date: str) -> Any:
-    """
-    external call for getting the cash_flow_data for a particular nbfc_id and due_date
-    """
-    url = settings.CASH_FLOW_URL
-    params = {
-        "nbfc_id": nbfc_id,
-        "due_date": due_date
-    }
-    response = requests.get(url=url, params=params, timeout=300)
-    return response
-
-
 def get_failed_loan_data() -> Any:
     """
     external call getting the failed loan data

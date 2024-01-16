@@ -1,11 +1,10 @@
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 from django.db.models import Sum
-from django.conf import settings
-
-import cash_flow.models
+from django.db.models import Q
+from django.core.cache import cache
 from cash_flow.models import (CollectionAndLoanBookedData, ProjectionCollectionData,
-                              CapitalInflowData, HoldCashData, NbfcBranchMaster, LoanDetail, LoanBookedLogs)
-from cash_flow.external_calls import get_cash_flow_data
+                              CapitalInflowData, HoldCashData, NbfcBranchMaster,
+                              UserRatioData)
 
 
 class Common:
@@ -32,7 +31,7 @@ class Common:
         return wace_dict
 
     @staticmethod
-    def get_collection_and_loan_booked(nbfc_id: int, due_date: date) -> [float, float]:
+    def get_collection_and_last_day_balance(nbfc_id: int, due_date: date) -> [float, float]:
         """
         helper function to get the collection amount from the models.NbfcAndDateWiseCashFlowData filtered
         against the nbfc_id name and the due_date
@@ -46,11 +45,11 @@ class Common:
         ).order_by('created_at').first()
 
         collection = 0.0
-        loan_booked = 0.0
+        last_day_balance = 0.0
         if collection_and_loan_booked_instance:
             collection = collection_and_loan_booked_instance.collection
-            loan_booked = collection_and_loan_booked_instance.loan_booked
-        return collection, loan_booked
+            last_day_balance = collection_and_loan_booked_instance.last_day_balance
+        return collection, last_day_balance
 
     @staticmethod
     def get_predicted_cash_inflow(nbfc_id: int, due_date: date) -> float:
@@ -120,6 +119,11 @@ class Common:
         :param loan_booked: float value for loan_booked
         :return: carry_forward
         """
+        collection = collection if collection is not None else 0.0
+        capital_inflow = capital_inflow if capital_inflow is not None else 0.0
+        hold_cash = hold_cash if hold_cash is not None else 0.0
+        loan_booked = loan_booked if loan_booked is not None else 0.0
+
         carry_forward = (collection + capital_inflow) * (1 - (hold_cash / 100)) + loan_booked
         if carry_forward is None:
             return 0
@@ -155,174 +159,45 @@ class Common:
             return 0.0
         return available_cash_flow
 
-    @staticmethod
-    def get_nbfc_having_lowest_average_for_delay_in_disbursal(available_credit_line_branches: list) -> int:
-        """
-        function that returns the nbfc_id with the lowest delay in disbursal average
-        :param available_credit_line_branches: a list carrying ids representing nbfc_ids
-        :return: an integer representing the nbfc_id
-        """
-        lowest_delay = float('inf')  # Initialize with positive infinity
-        lowest_delay_nbfc_id = -1
-
-        for nbfc_id in available_credit_line_branches:
-            master_branch_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
-
-            if (master_branch_instance.delay_in_disbursal is not None and
-                    master_branch_instance.delay_in_disbursal < lowest_delay):
-                lowest_delay = master_branch_instance.delay_in_disbursal
-                lowest_delay_nbfc_id = nbfc_id
-
-        return lowest_delay_nbfc_id
-
     def get_nbfc_for_loan_to_be_booked(self, branches_list: list, sanctioned_amount: float,
-                                       due_date: date = datetime.now(),
-                                       user_type: str = True) -> int:
+                                       user_type: str = True):
         """
         this helper function helps to get the nbfc id for the loan to be booked if the user
         is new or old, and checking other conditions if there is available credit line or not
-        :param due_date: a date field representing the date field
         :param user_type: string that tells if a user is new or old as 'O' or 'N'
         :param branches_list: a list containing nbfc_id's representing eligible branches
         :param sanctioned_amount: a float representing sanctioned/applied amount
         :return: the nbfc id as an integer field, it will return -1 in case of no nbfc is found
         """
-        available_credit_line_branches = []
-        overbooked_data = []
-        str_due_date = due_date.strftime('%Y-%m-%d')
-        for branch_id in branches_list:
-            cash_flow_data = get_cash_flow_data(branch_id, str_due_date).json()
-            if cash_flow_data:
-                available_credit_line = cash_flow_data.get('available_cash_flow', None)
-                if user_type == 'O':
-                    old_user_percentage = cash_flow_data.get('old_user_percentage', None)
-                    available_credit_line = (available_credit_line * old_user_percentage) / 100
-                else:
-                    new_user_percentage = cash_flow_data.get('new_user_percentage', None)
-                    available_credit_line = (available_credit_line * new_user_percentage) / 100
+        delay_in_disbursal = dict(NbfcBranchMaster.objects.filter(id__in=branches_list
+                                    ).order_by('delay_in_disbursal').values_list('id', 'delay_in_disbursal'))
+        available_credit_line = cache.get('available_balance', {})
+        selected_credit_line = [
+            i if available_credit_line.get(i, {}).get(user_type, 0) >= sanctioned_amount else None
+            for i in branches_list
+        ]
 
-                if available_credit_line >= sanctioned_amount:
-                    available_credit_line_branches.append(branch_id)
-                else:
-                    overbooked_amount = (sanctioned_amount - available_credit_line)
-                    if available_credit_line != 0:
-                        over_booked_ratio = overbooked_amount / available_credit_line
-                        overbooked_data.append(
-                            {
-                                'id': branch_id,
-                                'ratio': over_booked_ratio
-                            }
-                        )
+        if len(selected_credit_line) == 1:
+            return selected_credit_line[0]
 
-        if len(available_credit_line_branches) != 0:
-            return self.get_nbfc_having_lowest_average_for_delay_in_disbursal(available_credit_line_branches)
+        if selected_credit_line:
+            i = selected_credit_line[0]
+            val = delay_in_disbursal.get(i, 0)
+            for k in range(1, len(selected_credit_line)):
+                j = selected_credit_line[k]
+                if val < delay_in_disbursal.get(j, 0):
+                    i = j
+                    val = delay_in_disbursal.get(j, 0)
 
-        if len(overbooked_data) != 0:
-            min_overbooked_ratio_branch = min(overbooked_data, key=lambda x: x['ratio'])
-            return min_overbooked_ratio_branch['id']
-        return -1
+            return i
 
-    @staticmethod
-    def block_nbfcs_having_full_hold_cash(eligible_branches_list: list, due_date: date) -> list:
-        """
-        helper to return a refined list by blocking nbfcs having full hold cash from the eligible_branches_list
-        :param eligible_branches_list: a list
-        :param due_date: a date-field
-        :return:
-        """
-        nbfcs_to_be_blocked = []
-        for nbfc in eligible_branches_list:
-            hold_cash_instance = cash_flow.models.HoldCashData.objects.filter(nbfc=nbfc,
-                                                                              start_date__lte=due_date,
-                                                                              end_date__gte=due_date).first()
-            if hold_cash_instance:
-                if hold_cash_instance.hold_cash == 100:
-                    nbfcs_to_be_blocked.append(nbfc)
-        return [x for x in eligible_branches_list if x not in nbfcs_to_be_blocked]
-
-    @staticmethod
-    def block_nbfcs_that_are_to_be_blocked(eligible_branches_list: list) -> list:
-        """
-        this helper function returns the refined nbfc list ny blocking the nbfcs that are to be blocked
-        like that of Unity
-        :param eligible_branches_list: a list containing eligible nbfcs
-        :return: a further refined list containing nbfcs
-        """
-        nbfcs_to_be_blocked = settings.NO_CHANGE_NBFC_LIST
-        return [x for x in eligible_branches_list if x not in nbfcs_to_be_blocked]
-
-    @staticmethod
-    def book_the_loan_instance_with_the_logs(credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
-                                             nbfc, loan_amount=None, is_booked=False,
-                                             loan_id=None):
-        """
-        helper function to book the loan with logging in models.LoanBookedLogs
-        we have to book the loans at the loan application level and loan applied status
-        if at the loan application status loan_status will be 'I' and the is booked will be true and request
-        type will be 'LAN' and the amount applied by the user will be booked but first checking the loan instance if
-        present or not from the credit limit request type
-        :param credit_limit: int value for credit limit assigned to the user
-        :param loan_type:
-        :param request_type:
-        :param user_id:
-        :param user_type:
-        :param cibil_score:
-        :param loan_amount:
-        :param is_booked:
-        :param nbfc: nbfc to be booked in the loan detail
-        :param loan_id:
-        :return:
-        """
-        if request_type == 'LAN':
-            # booking the loan instance with the loan status I and loan_id is None
-            nbfc_master_instance = NbfcBranchMaster.objects.filter(id=nbfc).first()
-            if nbfc_master_instance:
-                loan_instance = LoanDetail(
-                    nbfc=nbfc_master_instance,
-                    loan_id=loan_id,
-                    user_id=user_id,
-                    cibil_score=cibil_score,
-                    credit_limit=credit_limit,
-                    amount=credit_limit,
-                    loan_type=loan_type,
-                    user_type=user_type,
-                    is_booked=is_booked,
-                    status='I'
-                )
-                loan_instance.save()
-                # logging the loan logs
-                loan_log_instance = LoanBookedLogs(
-                    loan=loan_instance,
-                    amount=credit_limit,
-                    log_text='Loan booked with the credit limit',
-                    request_type=request_type
-                )
-                loan_log_instance.save()
-        elif request_type == 'LAD':
-            # booking the actual amount to be booked
-            nbfc_master_instance = NbfcBranchMaster.objects.filter(id=nbfc).first()
-            if  nbfc_master_instance:
-                loan_detail_instance = LoanDetail(
-                    nbfc=nbfc_master_instance,
-                    loan_id=loan_id,
-                    loan_type=loan_type,
-                    user_id=user_id,
-                    cibil_score=cibil_score,
-                    credit_limit=credit_limit,
-                    loan_amount=loan_amount,
-                    user_type=user_type,
-                    is_booked=is_booked,
-                    status='P'
-                )
-                loan_detail_instance.save()
-
-                loan_log_instance = LoanBookedLogs(
-                    loan=loan_detail_instance,
-                    request_type=request_type,
-                    amount=loan_amount,
-                    log_text='Loan booked with the actual amount'
-                )
-                loan_log_instance.save()
+        or_ratio = {
+            i: (available_credit_line[i][user_type] + sanctioned_amount)/available_credit_line[i][user_type]
+            for i in available_credit_line
+        }
+        or_ratio = dict(sorted(or_ratio.items()), key=lambda items: items[1])
+        for i in or_ratio:
+            return i
 
     @staticmethod
     def unbook_the_failed_loan(loan_id):
@@ -332,22 +207,70 @@ class Common:
         :param loan_id: the int representing the loan id
         :return:
         """
-        loan_detail_instance = LoanDetail.objects.filter(loan_id=loan_id).first()
-        if loan_detail_instance:
-            loan_detail_instance.status = 'F'
-            unbooked_amount = loan_detail_instance.amount
-            loan_log_instance = LoanBookedLogs(
-                loan=loan_detail_instance,
-                amount=unbooked_amount,
-                request_type='LF',
-                log_text='Unbooking the amount due to loan failure'
-            )
-            loan_log_instance.save()
-            # and also un_booking the loan amount
-            loan_detail_instance.delete()
 
+    @staticmethod
+    def get_nbfc_capital_inflow(due_date: date, nbfc_id=None):
+        """
 
+        :param nbfc_id:
+        :param due_date:
+        :return:
+        """
+        filtered_dict = {}
+        if nbfc_id:
+            filtered_dict['nbfc_id'] = nbfc_id
+        capital_inflow_value = dict(CapitalInflowData.objects.filter(
+            Q(start_date=due_date, end_date__isnull=True) | Q(start_date__lte=due_date, end_date__gte=due_date,
+                                                              end_date__isnull=False), **filtered_dict
+        ).values_list('nbfc_id', 'capital_inflow'))
 
+        if nbfc_id:
+            return capital_inflow_value.get(nbfc_id, 0)
+        return capital_inflow_value
+
+    @staticmethod
+    def get_hold_cash_value(due_date: date, nbfc_id=None):
+        """
+
+        :param nbfc_id:
+        :param due_date:
+        :return:
+        """
+        filtered_dict = {}
+        if nbfc_id:
+            filtered_dict['nbfc_id'] = nbfc_id
+        hold_cash_value = dict(HoldCashData.objects.filter(
+            Q(start_date=due_date, end_date__isnull=True) | Q(start_date__lte=due_date, end_date__gte=due_date,
+                                                              end_date__isnull=False), **filtered_dict
+        ).values_list('nbfc_id', 'hold_cash'))
+
+        if nbfc_id:
+            return hold_cash_value.get(nbfc_id, 0)
+        return hold_cash_value
+
+    @staticmethod
+    def get_user_ratio(due_date: date, nbfc_id=None):
+        """
+
+        :param nbfc_id:
+        :param due_date:
+        :return:
+        """
+        filtered_dict = {}
+        if nbfc_id:
+            filtered_dict['nbfc_id'] = nbfc_id
+        user_ratio_instance = UserRatioData.objects.filter(
+            Q(start_date=due_date, end_date__isnull=True) | Q(start_date__lte=due_date, end_date__gte=due_date,
+                                                              end_date__isnull=False), **filtered_dict
+        ).values_list('nbfc_id', 'old_percentage', 'new_percentage')
+
+        user_ratio_value = {}
+        for item in user_ratio_instance:
+            user_ratio_value[item.pop(0)] = item
+
+        if nbfc_id:
+            return user_ratio_value.get(nbfc_id, [100, 0])
+        return user_ratio_value
 
 
 

@@ -7,7 +7,6 @@ from rest_framework import exceptions
 
 
 class CustomAuthentication(authentication.BaseAuthentication):
-    TOKEN = os.environ.get('TOKEN')  # Replace with your desired API key
 
     def authenticate(self, request):
         url = settings.TOKEN_AUTHENTICATION_URL
@@ -28,3 +27,15 @@ class CustomAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed('Invalid  TOKEN')
         error = response.reason
         raise exceptions.ValidationError({'error': error, 'message': "Something Went Wrong"})
+
+
+class ServerAuthentication(authentication.BaseAuthentication):
+    TOKEN = os.environ.get('TOKEN')  # Replace with your desired API key
+
+    def authenticate(self, request):
+        token = request.META.get('TOKEN')
+
+        if token == self.TOKEN:
+            return None, None  # Authentication successful
+        else:
+            raise exceptions.AuthenticationFailed('Invalid  TOKEN')
