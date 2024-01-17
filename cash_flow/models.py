@@ -95,7 +95,7 @@ class NbfcWiseCollectionData(CreatedUpdatedAtMixin):
 
     nbfc = models.ForeignKey(NbfcBranchMaster, on_delete=models.CASCADE)
     collection_json = models.JSONField(null=True)
-    due_date = models.DateField(default=None)
+    due_date = models.DateField()
 
     class Meta:
         unique_together = ('nbfc', 'due_date')
@@ -117,6 +117,9 @@ class ProjectionCollectionData(CreatedUpdatedAtMixin):
     due_date = models.DateField()
     collection_date = models.DateField()
     amount = models.FloatField()
+    old_user_amount = models.FloatField()
+    new_user_amount = models.FloatField()
+    due_amount = models.FloatField()
 
     class Meta:
         ordering = ('-created_at',)
@@ -134,7 +137,6 @@ class CollectionAndLoanBookedData(CreatedUpdatedAtMixin):
     collection = models.FloatField(null=True)
     loan_booked = models.FloatField(null=True)
     last_day_balance = models.FloatField(default=0)
-
 
     def __str__(self):
         return (f"{self.nbfc} with due_date {self.due_date} with collection {self.collection} and "
