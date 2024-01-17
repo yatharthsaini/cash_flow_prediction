@@ -275,7 +275,7 @@ class Common:
             user_ratio_value[nbfc_id] = tuple(item_list)
 
         if nbfc_id:
-            return user_ratio_value.get(nbfc_id, [100, 0])
+            return user_ratio_value.get(nbfc_id, [80, 20])
         return user_ratio_value
 
 
