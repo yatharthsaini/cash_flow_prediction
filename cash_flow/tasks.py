@@ -73,7 +73,8 @@ def populate_wacm(due_date=None):
     nbfc_ids = NbfcBranchMaster.objects.filter(id__in=nbfc_list).order_by('created_at')
     nbfc_ids = dict(nbfc_ids.values_list('branch_name', 'id'))
     nbfc_ids_list = list(nbfc_ids.values())
-    queryset = NbfcWiseCollectionData.objects.filter(nbfc_id__in=nbfc_ids_list, due_date=due_date).order_by('created_at')
+    queryset = NbfcWiseCollectionData.objects.filter(nbfc_id__in=nbfc_ids_list, due_date=due_date).order_by(
+        'created_at')
     queryset = dict((str(nbfc_id), collection_json) for nbfc_id, collection_json in
                     queryset.values_list('nbfc_id', 'collection_json'))
 
@@ -93,9 +94,9 @@ def populate_wacm(due_date=None):
             total_ratio = old_ratio + new_ratio
             if total_ratio == 0:
                 continue
-            total_amount = total_ratio*projection_amount
-            new_user_amount = new_ratio*projection_amount
-            old_user_amount = old_ratio*projection_amount
+            total_amount = total_ratio * projection_amount
+            new_user_amount = new_ratio * projection_amount
+            old_user_amount = old_ratio * projection_amount
 
             try:
                 nbfc_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
@@ -324,7 +325,7 @@ def task_for_loan_booked(nbfc_id=None):
         filtered_dict['nbfc_id'] = nbfc_id
 
     due_date = datetime.now().date()
-    loan_booked_instance = LoanDetail.objects.filter(created_at__date=due_date, is_booked=True,
+    loan_booked_instance = LoanDetail.objects.filter(updated_at__date=due_date, is_booked=True,
                                                      **filtered_dict).exclude(status='F')
     loan_booked_instance = loan_booked_instance.annotate(
         value=Case(
@@ -453,7 +454,8 @@ def populate_last_day_balance(nbfc=None):
     loan_booked
     """
     filtered_dict = {}
-    due_date = datetime.now().date()
+    today = datetime.now().date()
+    due_date = today - timedelta(days=1)
     if nbfc:
         filtered_dict['nbfc_id'] = nbfc
     prediction_amount_value = dict(ProjectionCollectionData.objects.filter(
@@ -465,11 +467,25 @@ def populate_last_day_balance(nbfc=None):
     hold_cash_value = Common.get_hold_cash_value(due_date)
     capital_inflow_value = Common.get_nbfc_capital_inflow(due_date)
 
-    last_day_balance_data = (CollectionAndLoanBookedData.objects.filter(due_date=due_date, **filtered_dict).
-                             values_list('nbfc_id', 'last_day_balance', 'loan_booked'))
+    last_day_balance_data = dict(CollectionAndLoanBookedData.objects.filter(due_date=due_date, **filtered_dict).
+                                 values_list('nbfc_id', 'last_day_balance'))
+    loan_booked_instance = LoanDetail.objects.filter(updated_at__date=due_date, is_booked=True,
+                                                     **filtered_dict).exclude(status='F')
+    loan_booked_instance = loan_booked_instance.annotate(
+        value=Case(
+            When(status='P', then=F('amount')),
+            default=F('credit_limit')
+        )
+    )
+    loan_booked_instance = loan_booked_instance.values('nbfc_id').order_by('nbfc_id').annotate(
+        total_amount=Sum('value')
+    )
+    loan_booked = dict(loan_booked_instance.values_list('nbfc_id', 'total_amount'))
+
     prev_due_date = due_date - timedelta(days=1)
 
-    for nbfc_id, last_day_balance, loan_booked in last_day_balance_data:
+    for nbfc_id in last_day_balance_data:
+        last_day_balance = last_day_balance_data.get(nbfc_id, 0)
         hold_cash = hold_cash_value.get(nbfc_id, 0)
 
         prediction_cash_inflow = prediction_amount_value.get(nbfc_id, 0)
@@ -479,15 +495,14 @@ def populate_last_day_balance(nbfc=None):
         available_cash_flow = Common.get_available_cash_flow(prediction_cash_inflow, prev_day_carry_forward,
                                                              capital_inflow, hold_cash)
 
+        loan_booked = loan_booked.get(nbfc_id, 0)
+
         if loan_booked is None:
             loan_booked = 0
 
         last_day_balance = available_cash_flow - loan_booked
-        try:
-            prev_instance = CollectionAndLoanBookedData.objects.get(nbfc_id=nbfc_id, due_date=prev_due_date)
-        except ObjectDoesNotExist:
-            prev_instance = CollectionAndLoanBookedData.objects.create(nbfc_id=nbfc_id, due_date=prev_due_date)
-
-        if prev_instance:
-            prev_instance.last_day_balance = last_day_balance
-            prev_instance.save()
+        CollectionAndLoanBookedData.objects.create_or_update(
+            nbfc_id=nbfc_id,
+            due_date=today,
+            defaults={'last_day_balance': last_day_balance}
+        )
