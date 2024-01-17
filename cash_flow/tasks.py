@@ -342,7 +342,7 @@ def task_for_loan_booked(nbfc_id=None):
 
 
 @shared_task()
-# @celery_error_email
+@celery_error_email
 def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
                           nbfc_id, prev_loan_status=None, is_booked=False, loan_amount=None,
                           loan_id=None):
