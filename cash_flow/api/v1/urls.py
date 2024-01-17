@@ -1,6 +1,7 @@
 from django.urls import path
 from cash_flow.api.v1.views import (CapitalInflowDataView, HoldCashDataView, UserRatioDataView,
-                                    GetCashFlowView, NBFCBranchView, BookNBFCView, NBFCEligibilityViewSet)
+                                    GetCashFlowView, NBFCBranchView, BookNBFCView, NBFCEligibilityViewSet,
+                                    CreatePredictionData, ExportBookingAmount)
 
 urlpatterns = [
     path('capital-inflow/', CapitalInflowDataView.as_view(), name='capital_inflow'),
@@ -12,5 +13,7 @@ urlpatterns = [
     path('nbfc-eligibility/<int:pk>/', NBFCEligibilityViewSet.as_view({'patch': 'partial_update'}),
          name='nbfc_eligibility_detail'),
     path('nbfc-eligibility/', NBFCEligibilityViewSet.as_view({'get': 'list', 'post': 'create'}),
-         name='nbfc_eligibility')
+         name='nbfc_eligibility'),
+    path('create-prediction-data/', CreatePredictionData.as_view(), name='create-prediction-data'),
+    path('export-booking-amount/', ExportBookingAmount.as_view(), name='export-booking-amount'),
 ]

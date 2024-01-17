@@ -19,9 +19,11 @@ def populate_json_against_nbfc(due_date=None):
     """
     celery task to populate the models.NbfcWiseCollectionData
     """
-    current_date = datetime.now()
     if due_date is None:
+        current_date = datetime.now()
         due_date = current_date + relativedelta(months=1) - timedelta(days=1)
+    elif isinstance(due_date, str):
+        due_date = datetime.strptime(due_date, '%Y-%m-%d')
 
     formatted_due_date = due_date.strftime('%Y-%m-%d')
     collection_poll_data = get_collection_poll_response(formatted_due_date).json()
@@ -52,12 +54,16 @@ def populate_json_against_nbfc(due_date=None):
 
 @shared_task()
 @celery_error_email
-def populate_wacm():
+def populate_wacm(due_date=None):
     """
     celery task to populate the models.ProjectionCollectionData
     """
-    current_date = datetime.now()
-    due_date = current_date + relativedelta(months=1) - timedelta(days=1)
+    if due_date is None:
+        current_date = datetime.now()
+        due_date = current_date + relativedelta(months=1) - timedelta(days=1)
+    elif isinstance(due_date, str):
+        due_date = datetime.strptime(due_date, '%Y-%m-%d')
+
     formatted_due_date = due_date.strftime('%Y-%m-%d')
     dd_str = str(due_date.day)
     projection_response_data = get_due_amount_response(formatted_due_date).json()
@@ -78,11 +84,18 @@ def populate_wacm():
 
         ce_new_json = collection_json.get(dd_str, {}).get("New", {})
         ce_old_json = collection_json.get(dd_str, {}).get("Old", {})
-        wace_dict = Common.get_wace_against_due_date(ce_new_json, ce_old_json)
 
-        for dpd_date in wace_dict.keys():
+        for dpd_date in range(-7, 46):
             dpd_date_str = str(dpd_date)
             collection_date = due_date + timedelta(int(dpd_date))
+            old_ratio = ce_old_json.get(dpd_date_str, 0)
+            new_ratio = ce_new_json.get(dpd_date_str, 0)
+            total_ratio = old_ratio + new_ratio
+            if total_ratio == 0:
+                continue
+            total_amount = total_ratio*projection_amount
+            new_user_amount = new_ratio*projection_amount
+            old_user_amount = old_ratio*projection_amount
 
             try:
                 nbfc_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
@@ -90,17 +103,13 @@ def populate_wacm():
                 continue
 
             # db constraint of not getting the duplicate set of same nbfc, due_date and collection_date
-            obj, created = ProjectionCollectionData.objects.get_or_create(
+            ProjectionCollectionData.objects.update_or_create(
                 nbfc=nbfc_instance,
                 due_date=due_date,
                 collection_date=collection_date,
-                defaults={'amount': wace_dict[dpd_date_str] * projection_amount}
+                defaults={'amount': total_amount, 'old_user_amount': old_user_amount,
+                          'new_user_amount': new_user_amount, 'due_amount': projection_amount}
             )
-
-            # If the object already existed, update its amount field
-            if not created:
-                obj.amount = wace_dict[dpd_date_str] * projection_amount
-                obj.save()
 
 
 @shared_task()
@@ -269,17 +278,16 @@ def populate_available_cash_flow(nbfc=None):
 
     user_ratio_value = Common.get_user_ratio(due_date)
 
-    collection_value = dict((CollectionAndLoanBookedData.objects.filter(due_date=due_date, **filtered_dict).
-                             values_list('nbfc_id', 'last_day_balance')))
-
+    carry_forward = dict(CollectionAndLoanBookedData.objects.filter(**filtered_dict, due_date=due_date).values_list
+                         ('nbfc_id', 'last_day_balance'))
     cal_data = {}
-    for nbfc_id in collection_value:
+    for nbfc_id in prediction_amount_value:
         hold_cash = hold_cash_value.get(nbfc_id, 0)
         if hold_cash == 100:
             continue
 
         prediction_cash_inflow = prediction_amount_value.get(nbfc_id, 0)
-        prev_day_carry_forward = collection_value.get(nbfc_id, 0)
+        prev_day_carry_forward = carry_forward.get(nbfc_id, 0)
 
         capital_inflow = capital_inflow_value.get(nbfc_id, 0)
 
@@ -334,9 +342,9 @@ def task_for_loan_booked(nbfc_id=None):
 
 
 @shared_task()
-@celery_error_email
+# @celery_error_email
 def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
-                          nbfc_id, loan_amount=None,
+                          nbfc_id, prev_loan_status=None, is_booked=False, loan_amount=None,
                           loan_id=None):
     """
     helper function to book the loan with logging in models.LoanBookedLogs
@@ -349,26 +357,27 @@ def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_t
     :param request_type:
     :param user_id:
     :param user_type:
+    :param is_booked:
     :param cibil_score:
+    :param prev_loan_status:
     :param loan_amount:
     :param nbfc_id: nbfc to be booked in the loan detail
     :param loan_id:
     :return:
     """
     due_date = datetime.now().date()
-    user_loan = LoanDetail.objects.filter(user_id=user_id, created_at__date=due_date).first()
-    loan_detail_id = None
-    if user_loan:
-        loan_detail_id = user_loan.id
     diff_amount = 0
     booked_amount = 0
+    current_loan_status = None
     if request_type == 'LAN':
+        current_loan_status = 'I'
         loan_data = {
             'nbfc_id': nbfc_id,
             'user_id': user_id,
             'cibil_score': cibil_score,
             'credit_limit': credit_limit,
             'loan_type': loan_type,
+            'loan_id': loan_id,
             'user_type': user_type,
             'is_booked': True,
             'status': 'I'
@@ -379,8 +388,10 @@ def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_t
             'request_type': request_type
         }
         booked_amount = credit_limit
+        diff_amount = credit_limit
 
     elif request_type == 'LAD':
+        current_loan_status = 'P'
         loan_data = {
             'nbfc_id': nbfc_id,
             'loan_id': loan_id,
@@ -399,7 +410,7 @@ def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_t
             'log_text': 'Loan booked with the actual amount'
         }
         booked_amount = loan_amount
-        diff_amount = credit_limit - loan_amount
+        diff_amount = loan_amount - credit_limit
     else:
         loan_data = {
             'nbfc_id': nbfc_id,
@@ -410,20 +421,22 @@ def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_t
             'user_type': user_type,
         }
         loan_log = {}
-
-    if loan_detail_id:
-        loan_data['id'] = loan_detail_id
-    loan = LoanDetail(**loan_data)
-    loan.save()
-    if loan_log:
+    user_loan = LoanDetail.objects.filter(user_id=user_id, created_at__date=due_date).exclude(status='F')
+    if user_loan.exists():
+        user_loan.update(**loan_data)
+        loan = user_loan.first()
+    else:
+        loan = LoanDetail(**loan_data)
+        loan.save()
+    if loan_log and is_booked is False:
         LoanBookedLogs(loan=loan, **loan_log)
-    if booked_amount:
+    if booked_amount and (is_booked is False or prev_loan_status != current_loan_status):
         booked_data = cache.get('available_balance', {})
         if booked_data:
             booked_value = booked_data.get(nbfc_id, {}).get(user_type)
             if booked_value is not None:
-                booked_data[nbfc_id][user_type] -= booked_amount + diff_amount
-                booked_data[nbfc_id]['total'] -= booked_amount + diff_amount
+                booked_data[nbfc_id][user_type] -= diff_amount
+                booked_data[nbfc_id]['total'] -= diff_amount
             else:
                 booked_data[nbfc_id].update({user_type: booked_amount, 'total': booked_amount})
         else:
