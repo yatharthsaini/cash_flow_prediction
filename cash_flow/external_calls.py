@@ -12,14 +12,17 @@ def get_common_headers():
     }
 
 
-def get_collection_poll_response() -> Any:
+def get_collection_poll_response(due_date: str) -> Any:
     """
     External api for getting the collection poll data
     :return: json response
     """
     url = settings.COLLECTION_PREDICTION_POLL_URL
+    params = {
+        "date": due_date
+    }
     headers = get_common_headers()
-    response = requests.get(url=url, headers=headers, timeout=200)
+    response = requests.get(url=url, headers=headers, params=params, timeout=200)
     return response
 
 
