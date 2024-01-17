@@ -95,8 +95,10 @@ class NbfcWiseCollectionData(CreatedUpdatedAtMixin):
 
     nbfc = models.ForeignKey(NbfcBranchMaster, on_delete=models.CASCADE)
     collection_json = models.JSONField(null=True)
+    due_date = models.DateField(default=None)
 
     class Meta:
+        unique_together = ('nbfc', 'due_date')
         ordering = ('-created_at',)
 
 
