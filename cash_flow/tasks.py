@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
-from celery import shared_task
 from dateutil.relativedelta import relativedelta
+from celery import shared_task
+from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.db.models import Sum, When, Case, F
@@ -14,23 +15,38 @@ from cash_flow_prediction.celery import celery_error_email
 
 @shared_task()
 @celery_error_email
-def populate_json_against_nbfc():
+def populate_json_against_nbfc(due_date=None):
     """
     celery task to populate the models.NbfcWiseCollectionData
     """
-    collection_poll_data = get_collection_poll_response().json()
+    current_date = datetime.now()
+    if due_date is None:
+        due_date = current_date + relativedelta(months=1)
+
+    formatted_due_date = due_date.strftime('%Y-%m-%d')
+    collection_poll_data = get_collection_poll_response(formatted_due_date).json()
+
     if collection_poll_data:
         nbfc_dict = collection_poll_data.get("data", {})
 
-        for nbfc_id, json in nbfc_dict.items():
+        for nbfc_id, json_data in nbfc_dict.items():
             try:
                 nbfc_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
             except ObjectDoesNotExist:
                 continue
-            nbfc_wise_collection_instance = NbfcWiseCollectionData(
-                nbfc=nbfc_instance,
-                collection_json=json
-            )
+
+            try:
+                nbfc_wise_collection_instance = NbfcWiseCollectionData.objects.create(
+                    due_date=due_date,
+                    nbfc=nbfc_instance,
+                    collection_json=json_data
+                )
+            except IntegrityError:
+                nbfc_wise_collection_instance = NbfcWiseCollectionData.objects.get(
+                    nbfc=nbfc_instance,
+                    due_date=due_date
+                )
+                nbfc_wise_collection_instance.collection_json = json_data
             nbfc_wise_collection_instance.save()
 
 
@@ -41,7 +57,7 @@ def populate_wacm():
     celery task to populate the models.ProjectionCollectionData
     """
     current_date = datetime.now()
-    due_date = (current_date + relativedelta(months=1)) - timedelta(1)
+    due_date = current_date + relativedelta(months=1)
     formatted_due_date = due_date.strftime('%Y-%m-%d')
     dd_str = str(due_date.day)
     projection_response_data = get_due_amount_response(formatted_due_date).json()
@@ -51,7 +67,7 @@ def populate_wacm():
     nbfc_ids = NbfcBranchMaster.objects.filter(id__in=nbfc_list).order_by('created_at')
     nbfc_ids = dict(nbfc_ids.values_list('branch_name', 'id'))
     nbfc_ids_list = list(nbfc_ids.values())
-    queryset = NbfcWiseCollectionData.objects.filter(nbfc_id__in=nbfc_ids_list).order_by('created_at')
+    queryset = NbfcWiseCollectionData.objects.filter(nbfc_id__in=nbfc_ids_list, due_date=due_date).order_by('created_at')
     queryset = dict((str(nbfc_id), collection_json) for nbfc_id, collection_json in
                     queryset.values_list('nbfc_id', 'collection_json'))
 
@@ -261,6 +277,7 @@ def populate_available_cash_flow(nbfc=None):
         hold_cash = hold_cash_value.get(nbfc_id, 0)
         if hold_cash == 100:
             continue
+
         prediction_cash_inflow = prediction_amount_value.get(nbfc_id, 0)
         prev_day_carry_forward = collection_value.get(nbfc_id, 0)
 
@@ -284,7 +301,7 @@ def populate_available_cash_flow(nbfc=None):
 
     if nbfc:
         return cal_data.get(nbfc, {}).get('total', 0)
-    cache.set('available_balance', cal_data)
+    cache.set('available_balance', cal_data, 600)
 
 
 @shared_task()
@@ -313,8 +330,7 @@ def task_for_loan_booked(nbfc_id=None):
     loan_booked = dict(loan_booked_instance.values_list('nbfc_id', 'total_amount'))
     if nbfc_id:
         return loan_booked.get(nbfc_id, 0)
-
-    cache.set('loan_booked', loan_booked)
+    cache.set('loan_booked', loan_booked, 600)
 
 
 @shared_task()
@@ -414,3 +430,51 @@ def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_t
             booked_data[nbfc_id] = {user_type: booked_amount, 'total': booked_amount}
         cache.set('available_balance', booked_data)
 
+
+@shared_task()
+@celery_error_email
+def populate_last_day_balance(nbfc=None):
+    """
+    celery task to populate last day balance in models.ProjectionCollectionData
+    required things to calculate prev day carry forward are: collection amount, capital inflow, hold_cash,
+    loan_booked
+    """
+    filtered_dict = {}
+    due_date = datetime.now().date()
+    if nbfc:
+        filtered_dict['nbfc_id'] = nbfc
+    prediction_amount_value = dict(ProjectionCollectionData.objects.filter(
+        **filtered_dict,
+        collection_date=due_date).values('nbfc_id').order_by('nbfc_id').annotate(
+        total_amount=Sum('amount')
+    ).values_list('nbfc_id', 'total_amount'))
+
+    hold_cash_value = Common.get_hold_cash_value(due_date)
+    capital_inflow_value = Common.get_nbfc_capital_inflow(due_date)
+
+    last_day_balance_data = (CollectionAndLoanBookedData.objects.filter(due_date=due_date, **filtered_dict).
+                             values_list('nbfc_id', 'last_day_balance', 'loan_booked'))
+    prev_due_date = due_date - timedelta(days=1)
+
+    for nbfc_id, last_day_balance, loan_booked in last_day_balance_data:
+        hold_cash = hold_cash_value.get(nbfc_id, 0)
+
+        prediction_cash_inflow = prediction_amount_value.get(nbfc_id, 0)
+        prev_day_carry_forward = last_day_balance
+
+        capital_inflow = capital_inflow_value.get(nbfc_id, 0)
+        available_cash_flow = Common.get_available_cash_flow(prediction_cash_inflow, prev_day_carry_forward,
+                                                             capital_inflow, hold_cash)
+
+        if loan_booked is None:
+            loan_booked = 0
+
+        last_day_balance = available_cash_flow - loan_booked
+        try:
+            prev_instance = CollectionAndLoanBookedData.objects.get(nbfc_id=nbfc_id, due_date=prev_due_date)
+        except ObjectDoesNotExist:
+            prev_instance = CollectionAndLoanBookedData.objects.create(nbfc_id=nbfc_id, due_date=prev_due_date)
+
+        if prev_instance:
+            prev_instance.last_day_balance = last_day_balance
+            prev_instance.save()
