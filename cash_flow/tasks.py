@@ -21,7 +21,7 @@ def populate_json_against_nbfc(due_date=None):
     """
     current_date = datetime.now()
     if due_date is None:
-        due_date = current_date + relativedelta(months=1)
+        due_date = current_date + relativedelta(months=1) - timedelta(days=1)
 
     formatted_due_date = due_date.strftime('%Y-%m-%d')
     collection_poll_data = get_collection_poll_response(formatted_due_date).json()
@@ -57,7 +57,7 @@ def populate_wacm():
     celery task to populate the models.ProjectionCollectionData
     """
     current_date = datetime.now()
-    due_date = current_date + relativedelta(months=1)
+    due_date = current_date + relativedelta(months=1) - timedelta(days=1)
     formatted_due_date = due_date.strftime('%Y-%m-%d')
     dd_str = str(due_date.day)
     projection_response_data = get_due_amount_response(formatted_due_date).json()
