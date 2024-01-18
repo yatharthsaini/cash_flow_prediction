@@ -14,7 +14,8 @@ from django.core.cache import cache
 from django.db.models import Sum
 
 from cash_flow.models import (HoldCashData, CapitalInflowData, UserRatioData, NbfcBranchMaster,
-                              NBFCEligibilityCashFlowHead, LoanDetail, ProjectionCollectionData)
+                              NBFCEligibilityCashFlowHead, LoanDetail, ProjectionCollectionData,
+                              UserPermissionModel)
 from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer
 from cash_flow.tasks import (populate_available_cash_flow, task_for_loan_booked, populate_json_against_nbfc,
                              task_for_loan_booking, populate_wacm)
@@ -654,3 +655,38 @@ class ExportBookingAmount(APIView):
         except Exception as e:
             msg = str(e)
             return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CreateUserPermission(APIView):
+    """
+    api view to create a new user if not already present in the UserPermissionsModel
+    """
+    authentication_classes = [CustomAuthentication]
+
+    def post(self, request):
+        payload = request.data
+        user_id = payload.get('user_id')
+        email = payload.get('email')
+
+        if user_id is None:
+            return Response({'error': 'Invalid user id'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        if email is None:
+            return Response({'error': 'Invalid Email'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        try:
+            role = payload.get('role', None)
+            is_active = payload.get('is_active', True)
+
+            user_exists = UserPermissionModel.objects.filter(user_id=user_id).exists()
+            if not user_exists:
+                UserPermissionModel.objects.create(
+                    user_id=user_id,
+                    email=email,
+                    is_active=is_active,
+                    role=role
+                )
+                return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+
+            return Response({'message': 'User already present'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            error = str(e)
+            return Response({'error': error}, status=status.HTTP_400_BAD_REQUEST)
