@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from celery import shared_task
 from django.db import IntegrityError
+from django.utils import timezone
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.db.models import Sum, When, Case, F
@@ -295,7 +296,7 @@ def populate_available_cash_flow(nbfc=None):
         available_cash_flow = Common.get_available_cash_flow(prediction_cash_inflow, prev_day_carry_forward,
                                                              capital_inflow, hold_cash)
 
-        user_ratio = user_ratio_value.get(nbfc_id, [100, 0])
+        user_ratio = user_ratio_value.get(nbfc_id, [80, 20])
         old_ratio = user_ratio[0]
         new_ratio = user_ratio[1]
 
@@ -506,3 +507,43 @@ def populate_last_day_balance(nbfc=None):
             due_date=today,
             defaults={'last_day_balance': last_day_balance}
         )
+
+
+@shared_task()
+@celery_error_email
+def task_to_validate_loan_booked():
+    """
+    celery task to validate loan booked
+    :return:
+    """
+    current_time = timezone.now()
+    time_to_be_checked = current_time - timedelta(hours=3)
+    loans_to_be_unbooked = LoanDetail.objects.filter(updated_at__lte=time_to_be_checked,
+                                 status='I', is_booked=True).order_by('nbfc_id')
+    bulk_update = []
+    for i in loans_to_be_unbooked:
+        user_type = i.user_type
+        nbfc_id = i.nbfc_id
+        amount = i.credit_limit
+        available_balance = cache.get('available_balance', {})
+        value = available_balance.get(nbfc_id, {}).get(user_type, 0)
+
+        amount += value
+        available_balance[nbfc_id][user_type] = amount
+        cache.set('available_balance', available_balance)
+
+        lb = LoanBookedLogs(
+            loan=i,
+            request_type='BE',
+            amount=amount,
+            log_text='Unbooking after three hours of inactivity'
+        )
+        bulk_update.append(lb)
+
+    loans_to_be_unbooked.update(is_booked=False)
+    LoanBookedLogs.objects.bulk_create(bulk_update, batch_size=100)
+
+
+
+
+

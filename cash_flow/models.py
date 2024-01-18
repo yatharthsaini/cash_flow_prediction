@@ -12,7 +12,7 @@ LOAN_STATUS_CHOICES = (
     )
 
 USER_TYPE_CHOICES = (
-    ('0', 'Old'),
+    ('O', 'Old'),
     ('N', 'New'),
 )
 
@@ -20,7 +20,8 @@ REQUEST_TYPE = (
     ('CL', 'Credit Limit'),
     ('LAN', 'Loan Application'),
     ('LAD', 'Loan Applied'),
-    ('LF', 'Loan failed')
+    ('LF', 'Loan failed'),
+    ('BE', 'Booking Expired'),
 )
 
 
