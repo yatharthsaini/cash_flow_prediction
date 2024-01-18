@@ -14,8 +14,9 @@ from django.core.cache import cache
 from django.db.models import Sum
 
 from cash_flow.models import (HoldCashData, CapitalInflowData, UserRatioData, NbfcBranchMaster,
-                              NBFCEligibilityCashFlowHead, LoanDetail, ProjectionCollectionData)
-from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer
+                              NBFCEligibilityCashFlowHead, LoanDetail, ProjectionCollectionData,
+                              UserPermissionModel)
+from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer, UserPermissionModelSerializer
 from cash_flow.tasks import (populate_available_cash_flow, task_for_loan_booked, populate_json_against_nbfc,
                              task_for_loan_booking, populate_wacm)
 from cash_flow.api.v1.authenticator import CustomAuthentication, ServerAuthentication
@@ -435,7 +436,8 @@ class BookNBFCView(APIView):
             assigned_nbfc = payload.get('assigned_nbfc', None)
 
             if assigned_nbfc == 27:
-                return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc}, status=status.HTTP_200_OK)
+                return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
+                                status=status.HTTP_200_OK)
 
             required_fields = ['user_id', 'loan_type', 'request_type', 'cibil_score', 'credit_limit']
             if any(value is None or value == '' for value in payload.values() if value in required_fields):
@@ -459,10 +461,11 @@ class BookNBFCView(APIView):
                 assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
                 due_date, common_instance)
 
-            return Response({'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id},
-                             'message': 'This is the nbfc assigned to this new user' if not assigned_nbfc
-                             else 'no change in nbfc is required as the assigned nbfc has available cash flow'},
-                            status=status.HTTP_200_OK)
+            return Response(
+                {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id},
+                 'message': 'This is the nbfc assigned to this new user' if not assigned_nbfc
+                 else 'no change in nbfc is required as the assigned nbfc has available cash flow'},
+                status=status.HTTP_200_OK)
 
         except Exception as e:
             error_message = str(e)
@@ -654,3 +657,32 @@ class ExportBookingAmount(APIView):
         except Exception as e:
             msg = str(e)
             return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserPermissionModelViewSet(ModelViewSet):
+    authentication_classes = [CustomAuthentication]
+    queryset = UserPermissionModel.objects.all()
+    serializer_class = UserPermissionModelSerializer
+    lookup_field = 'user_id'
+
+    def create(self, request, *args, **kwargs):
+        user_id = request.data.get('user_id')
+        if UserPermissionModel.objects.filter(user_id=user_id).exists():
+            return Response({'error': 'User with this user_id already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+        return super().create(request, *args, **kwargs)
+
+    def list(self, request, *args, **kwargs):
+        user_id = request.query_params.get('user_id', None)
+        if user_id:
+            queryset = UserPermissionModel.objects.filter(user_id=user_id)
+        else:
+            queryset = UserPermissionModel.objects.all()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def partial_update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
