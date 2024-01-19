@@ -25,3 +25,5 @@ python-dateutil
 pandas
 sentry-sdk
 elastic-apm
+gunicorn
+uvicorn

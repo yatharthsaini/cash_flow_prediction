@@ -278,8 +278,6 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_BACKEND = os.environ.get("EMAIL_BACKEND")
 EMAIL_FROM = os.environ.get("EMAIL_FROM")
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
-EMAIL_ONE = os.environ.get('EMAIL_ONE')
-EMAIL_TWO = os.environ.get('EMAIL_TWO')
 CELERY_ERROR_EMAIL_LIST = os.environ.get('CELERY_ERROR_EMAIL_LIST').split(" ")
 
 SERVER_EMAIL = os.environ.get("SERVER_EMAIL")
@@ -296,10 +294,6 @@ FAILED_LOAN_DATA = os.environ.get('FAILED_LOAN_DATA')
 
 # Project Name
 PROJECT_NAME = os.environ.get('PROJECT_NAME')
-
-# NBFC's that does not update the nbfc to be booked while cash flow
-NO_CHANGE_NBFC_LIST = os.environ.get('NO_CHANGE_NBFC_LIST').split(" ")
-
 
 ADMINS = [
     ("Vineet", "vineet.daniel@paymeindia.in"),
