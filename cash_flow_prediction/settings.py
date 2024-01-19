@@ -117,7 +117,7 @@ if DEBUG:
 ROOT_URLCONF = 'cash_flow_prediction.urls'
 
 # CORS Headers Settings
-CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', "").split()
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS').split(" ")
 
 # imported MethodNames enum from the constants.py
 CORS_ALLOW_METHODS = [
