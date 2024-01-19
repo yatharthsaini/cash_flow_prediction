@@ -17,7 +17,6 @@ from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
 from utils.constants import MethodNames
 
-
 load_dotenv()  # take environment variables from .env
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -118,12 +117,7 @@ if DEBUG:
 ROOT_URLCONF = 'cash_flow_prediction.urls'
 
 # CORS Headers Settings
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:8080",
-    "http://localhost:3000",
-    "http://127.0.0.1:8000",
-    "https://slugbuns.paymeindia.in"
-]
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS')
 
 # imported MethodNames enum from the constants.py
 CORS_ALLOW_METHODS = [
@@ -156,7 +150,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'cash_flow_prediction.wsgi.application'
 ASGI_APPLICATION = 'cash_flow_prediction.asgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
@@ -222,7 +215,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
@@ -230,7 +222,6 @@ STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 STATIC_ROOT = os.path.join(BASE_DIR / "static")
 MEDIA_ROOT = os.path.join(BASE_DIR, "media_root")
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -294,7 +285,6 @@ FAILED_LOAN_DATA = os.environ.get('FAILED_LOAN_DATA')
 
 # Project Name
 PROJECT_NAME = os.environ.get('PROJECT_NAME')
-
 
 ADMINS = [
     ("Vineet", "vineet.daniel@paymeindia.in"),
