@@ -295,6 +295,7 @@ FAILED_LOAN_DATA = os.environ.get('FAILED_LOAN_DATA')
 # Project Name
 PROJECT_NAME = os.environ.get('PROJECT_NAME')
 
+
 ADMINS = [
     ("Vineet", "vineet.daniel@paymeindia.in"),
     ("Alok", "alok.sharma@paymeindia.in"),
