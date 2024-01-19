@@ -23,5 +23,5 @@ postgres
 python-dotenv
 python-dateutil
 pandas
-
-
+sentry-sdk
+elastic-apm
