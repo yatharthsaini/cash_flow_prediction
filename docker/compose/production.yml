@@ -10,4 +10,4 @@ services:
 
   nginx:
     ports:
-      - "5017:80"
+      - "80:80"
