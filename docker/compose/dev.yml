@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    stdin_open: true
+    tty: true
+    networks:
+      - default
+
+  nginx:
+    ports:
+      - "5033:80"
+
+  redis:
+    image: redis:latest
+    container_name: cash_flow_prediction_backend_redis
+    ports:
+      - "6381:6379"
+

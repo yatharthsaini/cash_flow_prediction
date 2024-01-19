@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    image: cash_flow_prediction_app
+    hostname: app-docker-cash_flow_prediction
+    container_name: cash_flow_prediction_app
+    restart: always
+    command: bash -c "/app/runserver.sh"
+    volumes:
+      - .:/app
+      - static_root:/app/static
+      - media_root:/app/media
+    env_file:
+      - ./.env
+    stdin_open: true
+    tty: true
+
+  nginx:
+    build: ./docker/nginx
+    image: cash_flow_prediction_nginx
+    hostname: nginx-docker-cash-flow-prediction
+    container_name: cash_flow_prediction_nginx
+    volumes:
+      - static_root:/app/static
+      - /var/log/nginx/:/var/log/nginx/
+    depends_on:
+      - app
+
+networks:
+  default:
+    driver: bridge
+    name: cash_flow_prediction_network
+    ipam:
+      config:
+        - subnet: 60.0.3.0/24
+
+
+volumes:
+  static_root:
+  media_root:
