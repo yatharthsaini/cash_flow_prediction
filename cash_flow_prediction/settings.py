@@ -317,3 +317,18 @@ ADMINS = [
     ("Tarun", "tarun.pandey@paymeindia.in"),
     ("Dheeraj", "dheeraj.thakur@paymeindia.in"),
 ]
+
+if ENVIRONMENT == "PRODUCTION":
+    INSTALLED_APPS += ["elasticapm.contrib.django"]
+    ELASTIC_APM = {
+        "SERVICE_NAME": os.environ.get("APM_HOSTNAME"),
+        'ENVIRONMENT': os.environ.get("ENVIRONMENT"),
+        "DJANGO_TRANSACTION_NAME_FROM_ROUTE": True,
+        'SERVER_URL': 'http://{}:{}'.format(os.environ.get("ELASTIC_APM_IP"), os.environ.get("ELASTIC_APM_PORT")),
+    }
+
+    MIDDLEWARE += [
+        'elasticapm.contrib.django.middleware.TracingMiddleware',
+    ]
+
+    TEMPLATES[0]["OPTIONS"]["context_processors"] += ["elasticapm.contrib.django.context_processors.rum_tracing"]
