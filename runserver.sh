@@ -16,5 +16,5 @@ if [ "$ENVIRONMENT" != "PRODUCTION" ]; then
 else
   # Do something if the ENVIRONMENT variable is not set to LOCAL
   echo "The ENVIRONMENT variable is not set to LOCAL"
-  gunicorn cash_flow_prediction.asgi --bind 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker --reload --timeout 300 --workers 5 --threads=100
+  gunicorn cash_flow_prediction.asgi --bind 0.0.0.0:8000 -k uvicorn.workers.UvicornWorker --reload --timeout=300 --workers 5 --threads=100 --access-logfile=- --error-logfile=-
 fi

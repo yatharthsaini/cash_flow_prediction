@@ -18,7 +18,7 @@ from cash_flow.models import (HoldCashData, CapitalInflowData, UserRatioData, Nb
                               UserPermissionModel)
 from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer, UserPermissionModelSerializer
 from cash_flow.tasks import (populate_available_cash_flow, task_for_loan_booked, populate_json_against_nbfc,
-                             task_for_loan_booking, populate_wacm)
+                             task_for_loan_booking, populate_wacm, run_migrate)
 from cash_flow.api.v1.authenticator import CustomAuthentication, ServerAuthentication
 from utils.common_helper import Common
 
@@ -686,3 +686,22 @@ class UserPermissionModelViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class MigrateView(APIView):
+    """
+    api view to call the celery function for hitting the migrate command from django.core.command
+    """
+    authentication_classes = [ServerAuthentication]
+
+    def post(self, request):
+        payload = request.data
+        password = payload.get('password')
+        if not password:
+            return Response({'error': 'Invalid Password'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        try:
+            run_migrate(password)
+            return Response({'message': 'Migrations ran successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            msg = str(e)
+            return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
