@@ -33,20 +33,16 @@ def populate_json_against_nbfc(due_date=None):
         nbfc_dict = collection_poll_data.get("data", {})
 
         for nbfc_id, json_data in nbfc_dict.items():
-            try:
-                nbfc_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
-            except ObjectDoesNotExist:
-                continue
 
             try:
                 nbfc_wise_collection_instance = NbfcWiseCollectionData.objects.create(
                     due_date=due_date,
-                    nbfc=nbfc_instance,
+                    nbfc_id=nbfc_id,
                     collection_json=json_data
                 )
             except IntegrityError:
                 nbfc_wise_collection_instance = NbfcWiseCollectionData.objects.get(
-                    nbfc=nbfc_instance,
+                    nbfc_id=nbfc_id,
                     due_date=due_date
                 )
                 nbfc_wise_collection_instance.collection_json = json_data
