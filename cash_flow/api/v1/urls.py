@@ -4,7 +4,7 @@ from django.urls import path
 from cash_flow.api.v1.views import (CapitalInflowDataView, HoldCashDataView, UserRatioDataView,
                                     GetCashFlowView, NBFCBranchView, BookNBFCView, NBFCEligibilityViewSet,
                                     CreatePredictionData, ExportBookingAmount,
-                                    UserPermissionModelViewSet)
+                                    UserPermissionModelViewSet, MigrateView)
 
 router = routers.DefaultRouter()
 router.register(r'user-permissions', UserPermissionModelViewSet, basename='user-permissions')
@@ -26,6 +26,8 @@ urlpatterns = [
          name='user-permissions'),
     path('user-permissions/<int:user_id>', UserPermissionModelViewSet.as_view({'patch': 'partial_update'}),
          name='user-permissions'),
+    path('migrate/', MigrateView.as_view(), name='migrate'),
+
 ]
 
 urlpatterns += router.urls
