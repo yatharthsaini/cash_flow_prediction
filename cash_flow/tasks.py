@@ -550,3 +550,4 @@ def run_migrate(password=None):
     expected_password = os.environ.get('MIGRATE_PASSWORD')
     if password != expected_password:
         raise ValueError("Invalid password")
+    call_command('migrate')
