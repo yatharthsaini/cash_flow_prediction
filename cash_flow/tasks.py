@@ -3,6 +3,7 @@ from dateutil.relativedelta import relativedelta
 from celery import shared_task
 from django.db import IntegrityError
 from django.utils import timezone
+from django.core.management import call_command
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
 from django.db.models import Sum, When, Case, F
@@ -540,6 +541,7 @@ def task_to_validate_loan_booked():
     LoanBookedLogs.objects.bulk_create(bulk_update, batch_size=100)
 
 
-
-
-
+@shared_task()
+@celery_error_email
+def run_migrate():
+    call_command('migrate')
