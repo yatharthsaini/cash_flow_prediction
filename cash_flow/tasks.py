@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from celery import shared_task
@@ -542,6 +543,10 @@ def task_to_validate_loan_booked():
 
 
 @shared_task()
-@celery_error_email
-def run_migrate():
-    call_command('migrate')
+# @celery_error_email
+def run_migrate(password=None):
+    if password is None:
+        raise ValueError("Password is required to run the migrate task.")
+    expected_password = os.environ.get('MIGRATE_PASSWORD')
+    if password != expected_password:
+        raise ValueError("Invalid password")
