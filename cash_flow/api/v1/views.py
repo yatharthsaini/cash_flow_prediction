@@ -456,10 +456,24 @@ class BookNBFCView(APIView):
             amount = payload.get('amount', credit_limit)
             amount = amount if request_type == 'LAD' else credit_limit
 
+            if assigned_nbfc == 5:
+                return Response(
+                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc},
+                     'message': 'This is the nbfc assigned to this new user' if not assigned_nbfc
+                     else 'No change in nbfc is required'},
+                    status=status.HTTP_200_OK)
+
             common_instance = Common()
             assigned_nbfc, updated_nbfc_id = self.get_nbfc_for_loan_booking(
                 assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
                 due_date, common_instance)
+
+            if assigned_nbfc == updated_nbfc_id:
+                Response(
+                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id},
+                     'message': 'This is the nbfc assigned to this new user' if not assigned_nbfc
+                     else 'no change in nbfc is required as the assigned nbfc has available cash flow'},
+                    status=status.HTTP_200_OK)
 
             return Response(
                 {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id},
