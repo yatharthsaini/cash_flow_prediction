@@ -148,7 +148,10 @@ def populate_collection_amount():
     """
     due_date = datetime.now()
     str_due_date = due_date.strftime('%Y-%m-%d')
-    collection_amount_response = get_collection_amount_response(str_due_date).json()
+    try:
+        collection_amount_response = get_collection_amount_response(str_due_date).json()
+    except Exception as _:
+        return
     if collection_amount_response:
         collection_amount_data = collection_amount_response.get('data', {})
         for nbfc_id, collection_amount in collection_amount_data.items():
@@ -158,42 +161,24 @@ def populate_collection_amount():
                 continue
 
             # Try to get an existing record for the NBFC and due_date
-            collection_instance, created = CollectionAndLoanBookedData.objects.get_or_create(
+            collection_instance, _ = CollectionAndLoanBookedData.objects.update_or_create(
                 nbfc=nbfc_instance,
                 due_date=due_date,
                 defaults={'collection': collection_amount}
             )
 
-            # If the record already existed, update its collection field
-            if not created:
-                collection_instance.collection = collection_amount
-                # calculating the pre save amount of collection present in the db
-                pre_saved_collection_amount = 0
-                pre_saved_collection_instance = CollectionAndLoanBookedData.objects.filter(
-                    nbfc=nbfc_instance,
-                    due_date=due_date
-                ).first()
-                if pre_saved_collection_instance:
-                    pre_saved_collection_amount = pre_saved_collection_instance.collection
-                if collection_amount is None:
-                    collection_amount = 0
-                if pre_saved_collection_amount is None:
-                    pre_saved_collection_amount = 0
-                amount_diff = collection_amount - pre_saved_collection_amount
-                # saving the collection log too
-                collection_log_instance = CollectionLogs(
-                    collection=collection_instance,
-                    amount=amount_diff
-                )
-                collection_log_instance.save()
-                collection_instance.save()
-            else:
-                # case of having the first log of this particular nbfc and due_date
-                collection_log_instance = CollectionLogs(
-                    collection=collection_instance,
-                    amount=collection_amount
-                )
-                collection_log_instance.save()
+            collection_logs = CollectionLogs.objects.filter(nbfc=nbfc_instance).first()
+
+            if collection_logs:
+                prev_collection = collection_logs.amount
+                if prev_collection:
+                    collection_amount = collection_amount - prev_collection
+            
+            collection_log_instance = CollectionLogs(
+                collection=collection_instance,
+                amount=collection_amount
+            )
+            collection_log_instance.save()
 
 
 @shared_task()
