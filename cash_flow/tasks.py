@@ -1,4 +1,5 @@
 import os
+from json import JSONDecodeError
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from django.db import IntegrityError
@@ -30,7 +31,7 @@ def populate_json_against_nbfc(self, due_date=None):
     formatted_due_date = due_date.strftime('%Y-%m-%d')
     try:
         collection_poll_data = get_collection_poll_response(formatted_due_date).json()
-    except Exception as _:
+    except JSONDecodeError as _:
         return
 
     if collection_poll_data:
@@ -69,7 +70,7 @@ def populate_wacm(self, due_date=None):
     dd_str = str(due_date.day)
     try:
         projection_response_data = get_due_amount_response(formatted_due_date).json()
-    except Exception as _:
+    except JSONDecodeError as _:
         return
     if projection_response_data:
         projection_response_data = projection_response_data.get('data', {})
@@ -125,7 +126,7 @@ def populate_nbfc_branch_master(self):
     """
     try:
         nbfc_list_data_response = get_nbfc_list().json()
-    except Exception as _:
+    except JSONDecodeError as _:
         return
     if nbfc_list_data_response:
 
@@ -158,7 +159,7 @@ def populate_collection_amount(self):
     str_due_date = due_date.strftime('%Y-%m-%d')
     try:
         collection_amount_response = get_collection_amount_response(str_due_date).json()
-    except Exception as _:
+    except JSONDecodeError as _:
         return
     if collection_amount_response:
         collection_amount_data = collection_amount_response.get('data', {})
@@ -200,7 +201,7 @@ def populate_loan_booked_amount(self):
     str_due_date = due_date.strftime('%Y-%m-%d')
     try:
         loan_booked_response = get_loan_booked_data(str_due_date).json()
-    except Exception as _:
+    except JSONDecodeError as _:
         return
     if loan_booked_response:
         loan_booked_data = loan_booked_response.get('data', {})
@@ -231,7 +232,7 @@ def unbook_failed_loans(self):
     """
     try:
         failed_loans_data = get_failed_loan_data().json()
-    except Exception as _:
+    except JSONDecodeError as _:
         return
     if failed_loans_data:
         failed_loans_list = failed_loans_data.get('data', None)
