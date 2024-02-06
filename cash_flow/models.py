@@ -249,3 +249,6 @@ class CollectionLogs(CreatedUpdatedAtMixin):
     collection = models.ForeignKey(CollectionAndLoanBookedData, on_delete=models.CASCADE)
     amount = models.FloatField()
     log_text = models.CharField(max_length=50, default='Collection amount updated')
+
+    class Meta:
+        ordering = ('-created_at',)
