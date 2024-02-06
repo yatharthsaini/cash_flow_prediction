@@ -28,7 +28,10 @@ def populate_json_against_nbfc(self, due_date=None):
         due_date = datetime.strptime(due_date, '%Y-%m-%d')
 
     formatted_due_date = due_date.strftime('%Y-%m-%d')
-    collection_poll_data = get_collection_poll_response(formatted_due_date).json()
+    try:
+        collection_poll_data = get_collection_poll_response(formatted_due_date).json()
+    except Exception as _:
+        return
 
     if collection_poll_data:
         nbfc_dict = collection_poll_data.get("data", {})
@@ -64,7 +67,10 @@ def populate_wacm(self, due_date=None):
 
     formatted_due_date = due_date.strftime('%Y-%m-%d')
     dd_str = str(due_date.day)
-    projection_response_data = get_due_amount_response(formatted_due_date).json()
+    try:
+        projection_response_data = get_due_amount_response(formatted_due_date).json()
+    except Exception as _:
+        return
     if projection_response_data:
         projection_response_data = projection_response_data.get('data', {})
     nbfc_list = list(projection_response_data.keys())
@@ -117,7 +123,10 @@ def populate_nbfc_branch_master(self):
     """
     celery task to populate nbfc branch master storing nbfc's with the corresponding id's
     """
-    nbfc_list_data_response = get_nbfc_list().json()
+    try:
+        nbfc_list_data_response = get_nbfc_list().json()
+    except Exception as _:
+        return
     if nbfc_list_data_response:
 
         for entry in nbfc_list_data_response['data']:
@@ -189,7 +198,10 @@ def populate_loan_booked_amount(self):
     """
     due_date = datetime.now()
     str_due_date = due_date.strftime('%Y-%m-%d')
-    loan_booked_response = get_loan_booked_data(str_due_date).json()
+    try:
+        loan_booked_response = get_loan_booked_data(str_due_date).json()
+    except Exception as _:
+        return
     if loan_booked_response:
         loan_booked_data = loan_booked_response.get('data', {})
         for nbfc_id, loan_booked in loan_booked_data.items():
@@ -217,7 +229,10 @@ def unbook_failed_loans(self):
     """
     this celery function will get the data for the failed loans and unbook the loans in models.LoanDetail
     """
-    failed_loans_data = get_failed_loan_data().json()
+    try:
+        failed_loans_data = get_failed_loan_data().json()
+    except Exception as _:
+        return
     if failed_loans_data:
         failed_loans_list = failed_loans_data.get('data', None)
         if failed_loans_list:
