@@ -65,6 +65,22 @@
             <p><strong>Error Message :</strong> {{error}}</p>
             <p><strong>Error Line :</strong> {{line_number}}</p>
             <p><strong>Code Context :</strong> {{code_context}}</p>
+            <p><strong>Local Variable :</strong> </p>
+            <table border="1" border-collapse="collapse">
+                <tr>
+                    <th> Name </th>
+                    <th> Value </th>
+                </tr>
+                {% for key, value in variables.items %}
+                    <tr>
+                        <td> {{key}} </td>
+                        <td> {{value}} </td>
+                    </tr>
+                {% endfor %}
+                <tr>
+
+                </tr>
+            </table>
             <br>
             <h2>Function Caller Detail</h2>
             <p><strong>Caller Function :</strong> {{caller_function}}</p>
