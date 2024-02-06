@@ -170,7 +170,7 @@ class Common:
         :return: the nbfc id as an integer field, it will return -1 in case of no nbfc is found
         """
 
-        delay_in_disbursal = dict(NbfcBranchMaster.objects.filter(id__in=branches_list
+        delay_in_disbursal = dict(NbfcBranchMaster.objects.filter(id__in=branches_list, delay_in_disbursal__isnull=False
                                     ).order_by('delay_in_disbursal').values_list('id', 'delay_in_disbursal'))
         available_credit_line = cache.get('available_balance', {})
         selected_credit_line = [
@@ -178,7 +178,7 @@ class Common:
             for i in branches_list
         ]
         selected_credit_line = list(set(selected_credit_line))
-        selected_credit_line.remove(None)
+        selected_credit_line.remove(None) if None in selected_credit_line else None
 
         if len(selected_credit_line) == 1:
             return selected_credit_line[0]

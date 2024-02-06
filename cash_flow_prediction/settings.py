@@ -16,6 +16,7 @@ from celery import Celery
 from corsheaders.defaults import default_headers
 from dotenv import load_dotenv
 from utils.constants import MethodNames
+import sentry_sdk
 
 load_dotenv()  # take environment variables from .env
 
@@ -317,3 +318,14 @@ if ENVIRONMENT == "PRODUCTION":
     ]
 
     TEMPLATES[0]["OPTIONS"]["context_processors"] += ["elasticapm.contrib.django.context_processors.rum_tracing"]
+
+    sentry_sdk.init(
+        dsn="https://2292ef407492fc6717b9150e75e7cd68@o556520.ingest.sentry.io/4506624720764928",
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        traces_sample_rate=1.0,
+        # Set profiles_sample_rate to 1.0 to profile 100%
+        # of sampled transactions.
+        # We recommend adjusting this value in production.
+        profiles_sample_rate=1.0,
+    )

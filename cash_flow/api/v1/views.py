@@ -18,7 +18,7 @@ from cash_flow.models import (HoldCashData, CapitalInflowData, UserRatioData, Nb
                               UserPermissionModel)
 from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer, UserPermissionModelSerializer
 from cash_flow.tasks import (populate_available_cash_flow, task_for_loan_booked, populate_json_against_nbfc,
-                             task_for_loan_booking, populate_wacm)
+                             task_for_loan_booking, populate_wacm, run_migrate)
 from cash_flow.api.v1.authenticator import CustomAuthentication, ServerAuthentication
 from utils.common_helper import Common
 
@@ -456,10 +456,24 @@ class BookNBFCView(APIView):
             amount = payload.get('amount', credit_limit)
             amount = amount if request_type == 'LAD' else credit_limit
 
+            if assigned_nbfc == 5:
+                return Response(
+                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc},
+                     'message': 'This is the nbfc assigned to this new user' if not assigned_nbfc
+                     else 'No change in nbfc is required'},
+                    status=status.HTTP_200_OK)
+
             common_instance = Common()
             assigned_nbfc, updated_nbfc_id = self.get_nbfc_for_loan_booking(
                 assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
                 due_date, common_instance)
+
+            if assigned_nbfc == updated_nbfc_id:
+                Response(
+                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id},
+                     'message': 'This is the nbfc assigned to this new user' if not assigned_nbfc
+                     else 'no change in nbfc is required as the assigned nbfc has available cash flow'},
+                    status=status.HTTP_200_OK)
 
             return Response(
                 {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id},
@@ -686,3 +700,22 @@ class UserPermissionModelViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class MigrateView(APIView):
+    """
+    api view to call the celery function for hitting the migrate command from django.core.command
+    """
+    authentication_classes = [ServerAuthentication]
+
+    def post(self, request):
+        payload = request.data
+        password = payload.get('password')
+        if not password:
+            return Response({'error': 'Invalid Password'}, status=status.HTTP_406_NOT_ACCEPTABLE)
+        try:
+            run_migrate(password)
+            return Response({'message': 'Migrations ran successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            msg = str(e)
+            return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
