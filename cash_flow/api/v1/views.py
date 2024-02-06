@@ -434,14 +434,14 @@ class BookNBFCView(APIView):
         try:
             payload = request.data
             assigned_nbfc = payload.get('assigned_nbfc', None)
-
             if assigned_nbfc == 27:
                 return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
                                 status=status.HTTP_200_OK)
 
             required_fields = ['user_id', 'loan_type', 'request_type', 'cibil_score', 'credit_limit']
-            if any(value is None or value == '' for value in payload.values() if value in required_fields):
-                return Response({'error': 'one of the fields is missing'}, status=status.HTTP_400_BAD_REQUEST)
+            for i in required_fields:
+                if not payload.get(i):
+                    return Response({'error': f'Invalid {i} value'}, status=status.HTTP_400_BAD_REQUEST)
 
             user_id = payload['user_id']
             loan_type = payload['loan_type']
@@ -490,7 +490,6 @@ class BookNBFCView(APIView):
         user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, is_booked=True)
         user_booked_loan = user_loan_status.exists()
         user_prev_loan_status = user_loan_status.first().status if user_booked_loan else None
-
         if assigned_nbfc:
             available_cash = cache.get('available_balance', {}).get(assigned_nbfc, {}).get(user_type, 0)
             if available_cash >= amount or user_booked_loan:
@@ -517,6 +516,7 @@ class BookNBFCView(APIView):
             for i in eligible_branches_list
         ]
 
+
         if assigned_nbfc and assigned_nbfc in available_cash_list:
             self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
                                        assigned_nbfc, loan_id, user_prev_loan_status, amount, user_booked_loan)
@@ -527,6 +527,7 @@ class BookNBFCView(APIView):
             user_type=user_type,
             sanctioned_amount=amount
         )
+
 
         if assigned_nbfc:
             self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
@@ -733,10 +734,20 @@ class RealTimeNBFCDetail(APIView):
         """
         payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
-        if nbfc_id is None or nbfc_id == '':
-            return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
+            if nbfc_id is None or nbfc_id == '':
+                loan_booked_data = cache.get('loan_booked_data', {})
+                available_balance_data = cache.get('available_balance', {})
+                return Response(
+                    {
+                        'data': {
+                            'loan_booked': loan_booked_data,
+                            'available_balance': available_balance_data
+                        }
+                    },
+                    status=status.HTTP_200_OK
+                )
+
             loan_booked_data = cache.get('loan_booked', {}).get('nbfc_id', {})
             available_balance_data = cache.get('available_balance', {}).get('nbfc_id', {})
 

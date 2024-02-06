@@ -65,7 +65,7 @@ class NbfcBranchMaster(CreatedUpdatedAtMixin):
     delay_in_disbursal = models.FloatField(null=True)
 
     def __str__(self):
-        return f"{self.branch_name} is the nbfc_name"
+        return f"{self.branch_name} - {self.id}"
 
 
 class NbfcWiseCollectionData(CreatedUpdatedAtMixin):
