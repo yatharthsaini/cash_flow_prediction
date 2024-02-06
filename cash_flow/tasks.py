@@ -1,7 +1,6 @@
 import os
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
-from celery import shared_task
 from django.db import IntegrityError
 from django.utils import timezone
 from django.core.management import call_command
@@ -13,12 +12,12 @@ from cash_flow.external_calls import (get_due_amount_response, get_collection_po
 from cash_flow.models import (NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster,
                               CollectionAndLoanBookedData, CollectionLogs, LoanDetail, LoanBookedLogs)
 from utils.common_helper import Common
-from cash_flow_prediction.celery import celery_error_email
+from cash_flow_prediction.celery import celery_error_email, app
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def populate_json_against_nbfc(due_date=None):
+def populate_json_against_nbfc(self, due_date=None):
     """
     celery task to populate the models.NbfcWiseCollectionData
     """
@@ -51,9 +50,9 @@ def populate_json_against_nbfc(due_date=None):
             nbfc_wise_collection_instance.save()
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def populate_wacm(due_date=None):
+def populate_wacm(self, due_date=None):
     """
     celery task to populate the models.ProjectionCollectionData
     """
@@ -112,9 +111,9 @@ def populate_wacm(due_date=None):
             )
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def populate_nbfc_branch_master():
+def populate_nbfc_branch_master(self):
     """
     celery task to populate nbfc branch master storing nbfc's with the corresponding id's
     """
@@ -137,9 +136,9 @@ def populate_nbfc_branch_master():
                 master_instance.save()
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def populate_collection_amount():
+def populate_collection_amount(self):
     """
     celery task to populate the collection amount in models.CollectionAndLoanBookedData
     for a nbfc's for a particular due_date
@@ -181,9 +180,9 @@ def populate_collection_amount():
             collection_log_instance.save()
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def populate_loan_booked_amount():
+def populate_loan_booked_amount(self):
     """
     celery task to populate the loan_booked amount in models.CCollectionAndLoanBookedData
     for a nbfc's for a particular due_date
@@ -212,9 +211,9 @@ def populate_loan_booked_amount():
                 loan_booked_instance.save()
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def unbook_failed_loans():
+def unbook_failed_loans(self):
     """
     this celery function will get the data for the failed loans and unbook the loans in models.LoanDetail
     """
@@ -241,9 +240,9 @@ def unbook_failed_loans():
                 loan_log_instance.save()
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def populate_available_cash_flow(nbfc=None):
+def populate_available_cash_flow(self, nbfc=None):
     """
     celery task to store json of nbfc id against available cash flow in the cache by repeated calculation
     """
@@ -297,9 +296,9 @@ def populate_available_cash_flow(nbfc=None):
     cache.set('available_balance', cal_data, 600)
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def task_for_loan_booked(nbfc_id=None):
+def task_for_loan_booked(self, nbfc_id=None):
     """
     celery task for loan booked
     :return:
@@ -326,9 +325,9 @@ def task_for_loan_booked(nbfc_id=None):
     cache.set('loan_booked', loan_booked, 600)
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
+def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
                           nbfc_id, prev_loan_status=None, is_booked=False, loan_amount=None,
                           loan_id=None):
     """
@@ -429,9 +428,9 @@ def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_t
         cache.set('available_balance', booked_data)
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def populate_last_day_balance(nbfc=None):
+def populate_last_day_balance(self, nbfc=None):
     """
     celery task to populate last day balance in models.ProjectionCollectionData
     required things to calculate prev day carry forward are: collection amount, capital inflow, hold_cash,
@@ -492,9 +491,9 @@ def populate_last_day_balance(nbfc=None):
         )
 
 
-@shared_task()
+@app.task(bind=True)
 @celery_error_email
-def task_to_validate_loan_booked():
+def task_to_validate_loan_booked(self):
     """
     celery task to validate loan booked
     :return:
@@ -527,9 +526,9 @@ def task_to_validate_loan_booked():
     LoanBookedLogs.objects.bulk_create(bulk_update, batch_size=100)
 
 
-@shared_task()
-# @celery_error_email
-def run_migrate(password=None):
+@app.task(bind=True)
+@celery_error_email
+def run_migrate(self, password=None):
     if password is None:
         raise ValueError("Password is required to run the migrate task.")
     expected_password = os.environ.get('MIGRATE_PASSWORD')

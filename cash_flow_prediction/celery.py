@@ -36,10 +36,10 @@ def debug_task(self):
 
 def celery_error_email(func):
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(self, *args, **kwargs):
         time = datetime.datetime.now()
         try:
-            return func(*args, **kwargs)
+            return func(self, *args, **kwargs)
         except Exception as e:
             frame = inspect.trace()[-1]
             stack = inspect.stack()
@@ -48,8 +48,12 @@ def celery_error_email(func):
             caller_module = caller_frame[0].f_globals['__name__']
             caller_line_number = caller_frame.lineno
             caller_filename = caller_frame.filename
+
+            local_vars = frame[0].f_locals
+            variable_data = {var: str(local_vars[var]) for var in local_vars}
+            if 'self' in variable_data:
+                del variable_data['self']
             data = {
-                'project_name': settings.PROJECT_NAME,
                 'server': settings.ENVIRONMENT,
                 'caller_function': caller_function_name,
                 'caller_module': caller_module,
@@ -57,15 +61,17 @@ def celery_error_email(func):
                 'caller_filename': caller_filename,
                 'line_number': frame[2],
                 'code_context': frame[4],
-                'error': str(e)
+                'error': str(e),
+                'variables': variable_data,
             }
+
             data['func_name'] = func.__name__
             data['func_path'] = frame[0].f_code.co_filename
             data['starting_time'] = time
             data['args'] = args or 'None'
             data['kwargs'] = kwargs or 'None'
 
-            subject = "Celery task failure (%s)" % func.__name__
+            subject = f"Celery task failure ({func.__name__})"
             html_message = render_to_string('celery/celery_error_email.html', data)
             send_mail(
                 subject,
@@ -76,5 +82,4 @@ def celery_error_email(func):
                 html_message=html_message
             )
             raise
-
     return wrapper

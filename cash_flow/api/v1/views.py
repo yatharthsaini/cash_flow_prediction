@@ -719,3 +719,36 @@ class MigrateView(APIView):
         except Exception as e:
             msg = str(e)
             return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class RealTimeNBFCDetail(APIView):
+    """
+    api view to get the available balance and loan booked in real time using cache
+    """
+    authentication_classes = [ServerAuthentication]
+
+    def get(self, request):
+        """
+        get request which takes the nbfc_id in the query params
+        """
+        payload = request.query_params
+        nbfc_id = payload.get('nbfc_id', None)
+        if nbfc_id is None or nbfc_id == '':
+            return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            loan_booked_data = cache.get('loan_booked', {}).get('nbfc_id', {})
+            available_balance_data = cache.get('available_balance', {}).get('nbfc_id', {})
+
+            return Response(
+                {
+                    'data': {
+                        'loan_booked': loan_booked_data,
+                        'available_balance': available_balance_data
+                    }
+                },
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            msg = str(e)
+            return Response({'error': msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
