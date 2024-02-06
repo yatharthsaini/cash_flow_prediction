@@ -198,7 +198,7 @@ class Common:
             i: (available_credit_line[i][user_type] + sanctioned_amount)/available_credit_line[i][user_type]
             for i in available_credit_line
         }
-        or_ratio = dict(sorted(or_ratio.items()), key=lambda items: items[1])
+        or_ratio = dict(sorted(or_ratio.items(), key=lambda items: items[1]))
 
         for i in or_ratio:
             return i
