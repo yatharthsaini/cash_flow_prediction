@@ -733,10 +733,20 @@ class RealTimeNBFCDetail(APIView):
         """
         payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
-        if nbfc_id is None or nbfc_id == '':
-            return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
-
         try:
+            if nbfc_id is None or nbfc_id == '':
+                loan_booked_data = cache.get('loan_booked_data', {})
+                available_balance_data = cache.get('available_balance', {})
+                return Response(
+                    {
+                        'data': {
+                            'loan_booked': loan_booked_data,
+                            'available_balance': available_balance_data
+                        }
+                    },
+                    status=status.HTTP_200_OK
+                )
+
             loan_booked_data = cache.get('loan_booked', {}).get('nbfc_id', {})
             available_balance_data = cache.get('available_balance', {}).get('nbfc_id', {})
 
