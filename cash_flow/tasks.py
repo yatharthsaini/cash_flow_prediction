@@ -17,7 +17,7 @@ from cash_flow_prediction.celery import celery_error_email, app
 
 @app.task(bind=True)
 @celery_error_email
-def populate_json_against_nbfc(due_date=None):
+def populate_json_against_nbfc(self, due_date=None):
     """
     celery task to populate the models.NbfcWiseCollectionData
     """
@@ -52,7 +52,7 @@ def populate_json_against_nbfc(due_date=None):
 
 @app.task(bind=True)
 @celery_error_email
-def populate_wacm(due_date=None):
+def populate_wacm(self, due_date=None):
     """
     celery task to populate the models.ProjectionCollectionData
     """
@@ -113,7 +113,7 @@ def populate_wacm(due_date=None):
 
 @app.task(bind=True)
 @celery_error_email
-def populate_nbfc_branch_master():
+def populate_nbfc_branch_master(self):
     """
     celery task to populate nbfc branch master storing nbfc's with the corresponding id's
     """
@@ -138,7 +138,7 @@ def populate_nbfc_branch_master():
 
 @app.task(bind=True)
 @celery_error_email
-def populate_collection_amount():
+def populate_collection_amount(self):
     """
     celery task to populate the collection amount in models.CollectionAndLoanBookedData
     for a nbfc's for a particular due_date
@@ -182,7 +182,7 @@ def populate_collection_amount():
 
 @app.task(bind=True)
 @celery_error_email
-def populate_loan_booked_amount():
+def populate_loan_booked_amount(self):
     """
     celery task to populate the loan_booked amount in models.CCollectionAndLoanBookedData
     for a nbfc's for a particular due_date
@@ -213,7 +213,7 @@ def populate_loan_booked_amount():
 
 @app.task(bind=True)
 @celery_error_email
-def unbook_failed_loans():
+def unbook_failed_loans(self):
     """
     this celery function will get the data for the failed loans and unbook the loans in models.LoanDetail
     """
@@ -242,7 +242,7 @@ def unbook_failed_loans():
 
 @app.task(bind=True)
 @celery_error_email
-def populate_available_cash_flow(nbfc=None):
+def populate_available_cash_flow(self, nbfc=None):
     """
     celery task to store json of nbfc id against available cash flow in the cache by repeated calculation
     """
@@ -298,7 +298,7 @@ def populate_available_cash_flow(nbfc=None):
 
 @app.task(bind=True)
 @celery_error_email
-def task_for_loan_booked(nbfc_id=None):
+def task_for_loan_booked(self, nbfc_id=None):
     """
     celery task for loan booked
     :return:
@@ -327,7 +327,7 @@ def task_for_loan_booked(nbfc_id=None):
 
 @app.task(bind=True)
 @celery_error_email
-def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
+def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
                           nbfc_id, prev_loan_status=None, is_booked=False, loan_amount=None,
                           loan_id=None):
     """
@@ -430,7 +430,7 @@ def task_for_loan_booking(credit_limit, loan_type, request_type, user_id, user_t
 
 @app.task(bind=True)
 @celery_error_email
-def populate_last_day_balance(nbfc=None):
+def populate_last_day_balance(self, nbfc=None):
     """
     celery task to populate last day balance in models.ProjectionCollectionData
     required things to calculate prev day carry forward are: collection amount, capital inflow, hold_cash,
@@ -528,7 +528,7 @@ def task_to_validate_loan_booked(self):
 
 @app.task(bind=True)
 @celery_error_email
-def run_migrate(password=None):
+def run_migrate(self, password=None):
     if password is None:
         raise ValueError("Password is required to run the migrate task.")
     expected_password = os.environ.get('MIGRATE_PASSWORD')
