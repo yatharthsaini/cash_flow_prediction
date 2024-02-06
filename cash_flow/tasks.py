@@ -167,7 +167,7 @@ def populate_collection_amount():
                 defaults={'collection': collection_amount}
             )
 
-            collection_logs = CollectionLogs.objects.filter(nbfc=nbfc_instance).first()
+            collection_logs = CollectionLogs.objects.filter(collection=collection_instance).first()
 
             if collection_logs:
                 prev_collection = collection_logs.amount
