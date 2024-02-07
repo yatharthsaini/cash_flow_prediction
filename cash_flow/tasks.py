@@ -171,31 +171,31 @@ def populate_collection_amount(self):
                 continue
 
             # Check if an instance already exists for the NBFC and due_date
-            existing_instance = CollectionAndLoanBookedData.objects.filter(nbfc=nbfc_instance, due_date=due_date).first()
+            collection_instance = CollectionAndLoanBookedData.objects.filter(nbfc=nbfc_instance, due_date=due_date).first()
 
-            if existing_instance:
+            if collection_instance:
                 # Update the existing instance
                 with transaction.atomic():
-                    existing_instance.collection = collection_amount
-                    existing_instance.save()
+                    collection_instance.collection = collection_amount
+                    collection_instance.save()
             else:
                 # Create a new instance
                 collection_instance = CollectionAndLoanBookedData(
                     nbfc=nbfc_instance, due_date=due_date, collection=collection_amount)
                 collection_instance.save()
 
-                collection_logs = CollectionLogs.objects.filter(collection=collection_instance).first()
+            collection_logs = CollectionLogs.objects.filter(collection=collection_instance).first()
 
-                if collection_logs:
-                    prev_collection = collection_logs.amount
-                    if prev_collection:
-                        collection_amount = collection_amount - prev_collection
+            if collection_logs:
+                prev_collection = collection_logs.amount
+                if prev_collection:
+                    collection_amount = collection_amount - prev_collection
 
-                collection_log_instance = CollectionLogs(
-                    collection=collection_instance,
-                    amount=collection_amount
-                )
-                collection_log_instance.save()
+            collection_log_instance = CollectionLogs(
+                collection=collection_instance,
+                amount=collection_amount
+            )
+            collection_log_instance.save()
 
 
 @app.task(bind=True)
