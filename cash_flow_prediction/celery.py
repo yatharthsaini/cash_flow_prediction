@@ -6,6 +6,8 @@ from functools import wraps
 from celery import Celery
 
 from django.template.loader import render_to_string
+from django.db import models
+from django.db.models import QuerySet
 from django.core.mail import send_mail
 from django.conf import settings
 
@@ -50,7 +52,9 @@ def celery_error_email(func):
             caller_filename = caller_frame.filename
 
             local_vars = frame[0].f_locals
-            variable_data = {var: str(local_vars[var]) for var in local_vars}
+            variable_data = {var: str(local_vars[var]) for var in local_vars if not isinstance(local_vars[var],
+                                                                                               (QuerySet, models.Model))
+                             }
             if 'self' in variable_data:
                 del variable_data['self']
             data = {
