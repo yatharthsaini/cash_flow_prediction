@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.core.management import call_command
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
+from django.db import transaction
 from django.db.models import Sum, When, Case, F
 from cash_flow.external_calls import (get_due_amount_response, get_collection_poll_response, get_nbfc_list,
                                       get_collection_amount_response, get_loan_booked_data, get_failed_loan_data)
@@ -169,25 +170,32 @@ def populate_collection_amount(self):
             except ObjectDoesNotExist:
                 continue
 
-            # Try to get an existing record for the NBFC and due_date
-            collection_instance, _ = CollectionAndLoanBookedData.objects.update_or_create(
-                nbfc=nbfc_instance,
-                due_date=due_date,
-                defaults={'collection': collection_amount}
-            )
+            # Check if an instance already exists for the NBFC and due_date
+            existing_instance = CollectionAndLoanBookedData.objects.filter(nbfc=nbfc_instance, due_date=due_date).first()
 
-            collection_logs = CollectionLogs.objects.filter(collection=collection_instance).first()
+            if existing_instance:
+                # Update the existing instance
+                with transaction.atomic():
+                    existing_instance.collection = collection_amount
+                    existing_instance.save()
+            else:
+                # Create a new instance
+                collection_instance = CollectionAndLoanBookedData(
+                    nbfc=nbfc_instance, due_date=due_date, collection=collection_amount)
+                collection_instance.save()
 
-            if collection_logs:
-                prev_collection = collection_logs.amount
-                if prev_collection:
-                    collection_amount = collection_amount - prev_collection
-            
-            collection_log_instance = CollectionLogs(
-                collection=collection_instance,
-                amount=collection_amount
-            )
-            collection_log_instance.save()
+                collection_logs = CollectionLogs.objects.filter(collection=collection_instance).first()
+
+                if collection_logs:
+                    prev_collection = collection_logs.amount
+                    if prev_collection:
+                        collection_amount = collection_amount - prev_collection
+
+                collection_log_instance = CollectionLogs(
+                    collection=collection_instance,
+                    amount=collection_amount
+                )
+                collection_log_instance.save()
 
 
 @app.task(bind=True)
