@@ -53,7 +53,7 @@ def celery_error_email(func):
 
             local_vars = frame[0].f_locals
             variable_data = {var: str(local_vars[var]) for var in local_vars if not isinstance(local_vars[var],
-                                                                                               (QuerySet, models.Model))
+                                                                                               QuerySet)
                              }
             if 'self' in variable_data:
                 del variable_data['self']
