@@ -508,7 +508,7 @@ def populate_last_day_balance(self, nbfc=None):
             loan_booked = 0
 
         last_day_balance = available_cash_flow - loan_booked
-        CollectionAndLoanBookedData.objects.create_or_update(
+        CollectionAndLoanBookedData.objects.update_or_create(
             nbfc_id=nbfc_id,
             due_date=today,
             defaults={'last_day_balance': last_day_balance}
