@@ -370,7 +370,7 @@ class GetCashFlowView(BaseModelViewSet):
         try:
             predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
 
-            loan_booked = cache.get('loan_booked', {}).get(nbfc_id, 0)
+            loan_booked = cache.get('loan_booked', {}).get(nbfc_id, {}).get('total', 0)
             if not loan_booked:
                 loan_booked = task_for_loan_booked(nbfc_id)
 
@@ -458,9 +458,7 @@ class BookNBFCView(APIView):
 
             if assigned_nbfc == 5:
                 return Response(
-                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc},
-                     'message': 'This is the nbfc assigned to this new user' if not assigned_nbfc
-                     else 'No change in nbfc is required'},
+                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc}},
                     status=status.HTTP_200_OK)
 
             common_instance = Common()
@@ -469,16 +467,12 @@ class BookNBFCView(APIView):
                 due_date, common_instance)
 
             if assigned_nbfc == updated_nbfc_id:
-                Response(
-                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id},
-                     'message': 'This is the nbfc assigned to this new user' if not assigned_nbfc
-                     else 'no change in nbfc is required as the assigned nbfc has available cash flow'},
+                return Response(
+                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
                     status=status.HTTP_200_OK)
 
             return Response(
-                {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id},
-                 'message': 'This is the nbfc assigned to this new user' if not assigned_nbfc
-                 else 'no change in nbfc is required as the assigned nbfc has available cash flow'},
+                {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
                 status=status.HTTP_200_OK)
 
         except Exception as e:
@@ -490,8 +484,9 @@ class BookNBFCView(APIView):
         user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, is_booked=True)
         user_booked_loan = user_loan_status.exists()
         user_prev_loan_status = user_loan_status.first().status if user_booked_loan else None
+        cached_available_balance = cache.get('available_balance', {})
         if assigned_nbfc:
-            available_cash = cache.get('available_balance', {}).get(assigned_nbfc, {}).get(user_type, 0)
+            available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
             if available_cash >= amount or user_booked_loan:
                 self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
                                            assigned_nbfc, loan_id, user_prev_loan_status, amount, user_booked_loan)
@@ -511,16 +506,9 @@ class BookNBFCView(APIView):
         )
 
         eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
-        available_cash_list = [
-            i if cache.get('available_balance', {}).get(i, {}).get(user_type, 0) >= amount else -1
-            for i in eligible_branches_list
-        ]
 
-
-        if assigned_nbfc and assigned_nbfc in available_cash_list:
-            self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                       assigned_nbfc, loan_id, user_prev_loan_status, amount, user_booked_loan)
-            return assigned_nbfc, assigned_nbfc
+        eligible_branches_list.append(assigned_nbfc)
+        eligible_branches_list = set(cached_available_balance.keys()).intersection(eligible_branches_list)
 
         updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(
             branches_list=eligible_branches_list,
@@ -528,8 +516,7 @@ class BookNBFCView(APIView):
             sanctioned_amount=amount
         )
 
-
-        if assigned_nbfc:
+        if updated_nbfc_id:
             self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
                                        updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_booked_loan)
 
@@ -734,10 +721,12 @@ class RealTimeNBFCDetail(APIView):
         """
         payload = request.query_params
         nbfc_id = payload.get('nbfc_id', None)
+
         try:
+            loan_booked_data = cache.get('loan_booked_data', {})
+            available_balance_data = cache.get('available_balance', {})
+
             if nbfc_id is None or nbfc_id == '':
-                loan_booked_data = cache.get('loan_booked_data', {})
-                available_balance_data = cache.get('available_balance', {})
                 return Response(
                     {
                         'data': {
@@ -748,8 +737,8 @@ class RealTimeNBFCDetail(APIView):
                     status=status.HTTP_200_OK
                 )
 
-            loan_booked_data = cache.get('loan_booked', {}).get('nbfc_id', {})
-            available_balance_data = cache.get('available_balance', {}).get('nbfc_id', {})
+            loan_booked_data = loan_booked_data.get(nbfc_id, {})
+            available_balance_data = available_balance_data.get(nbfc_id, {})
 
             return Response(
                 {
