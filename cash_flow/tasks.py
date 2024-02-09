@@ -530,9 +530,9 @@ def task_to_validate_loan_booked(self):
         amount = i.credit_limit
         available_balance = cache.get('available_balance', {})
         value = available_balance.get(nbfc_id, {}).get(user_type, 0)
-
         amount += value
-        available_balance[nbfc_id][user_type] = amount
+
+        available_balance.setdefault(nbfc_id, {})[user_type] = amount
         cache.set('available_balance', available_balance)
 
         lb = LoanBookedLogs(
