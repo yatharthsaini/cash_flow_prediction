@@ -24,7 +24,7 @@ def populate_json_against_nbfc(self, due_date=None):
     celery task to populate the models.NbfcWiseCollectionData
     """
     if due_date is None:
-        current_date = datetime.now()
+        current_date = datetime.now().date()
         due_date = current_date + relativedelta(months=1) - timedelta(days=1)
     elif isinstance(due_date, str):
         due_date = datetime.strptime(due_date, '%Y-%m-%d')
@@ -156,7 +156,7 @@ def populate_collection_amount(self):
     the celery task would also log the changes into the models.CollectionLogs for every change pre
     celery task and post celery task collection amount
     """
-    due_date = datetime.now()
+    due_date = datetime.now().date()
     str_due_date = due_date.strftime('%Y-%m-%d')
     try:
         collection_amount_response = get_collection_amount_response(str_due_date).json()
@@ -170,20 +170,12 @@ def populate_collection_amount(self):
             except ObjectDoesNotExist:
                 continue
 
-            # Check if an instance already exists for the NBFC and due_date
-            collection_instance = CollectionAndLoanBookedData.objects.filter(nbfc=nbfc_instance,
-                                                                             due_date=due_date).first()
-
-            if collection_instance:
-                # Update the existing instance
-                with transaction.atomic():
-                    collection_instance.collection = collection_amount
-                    collection_instance.save()
-            else:
-                # Create a new instance
-                collection_instance = CollectionAndLoanBookedData(
-                    nbfc=nbfc_instance, due_date=due_date, collection=collection_amount)
-                collection_instance.save()
+            # Try to get an existing record for the NBFC and due_date
+            collection_instance, _ = CollectionAndLoanBookedData.objects.update_or_create(
+                nbfc=nbfc_instance,
+                due_date=due_date,
+                defaults={'collection': collection_amount}
+            )
 
             collection_logs = CollectionLogs.objects.filter(collection=collection_instance).first()
 
@@ -206,7 +198,7 @@ def populate_loan_booked_amount(self):
     celery task to populate the loan_booked amount in models.CCollectionAndLoanBookedData
     for a nbfc's for a particular due_date
     """
-    due_date = datetime.now()
+    due_date = datetime.now().date()
     str_due_date = due_date.strftime('%Y-%m-%d')
     try:
         loan_booked_response = get_loan_booked_data(str_due_date).json()
@@ -215,22 +207,13 @@ def populate_loan_booked_amount(self):
     if loan_booked_response:
         loan_booked_data = loan_booked_response.get('data', {})
         for nbfc_id, loan_booked in loan_booked_data.items():
-            try:
-                nbfc_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
-            except ObjectDoesNotExist:
-                continue
 
             # Try to get an existing record for the NBFC and due_date
-            loan_booked_instance, created = CollectionAndLoanBookedData.objects.get_or_create(
-                nbfc=nbfc_instance,
+            CollectionAndLoanBookedData.objects.update_or_create(
+                nbfc_id=nbfc_id,
                 due_date=due_date,
                 defaults={'loan_booked': loan_booked}
             )
-
-            # If the record already existed, update its loan_booked field
-            if not created:
-                loan_booked_instance.loan_booked = loan_booked
-                loan_booked_instance.save()
 
 
 @app.task(bind=True)

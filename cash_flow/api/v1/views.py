@@ -481,15 +481,18 @@ class BookNBFCView(APIView):
 
     def get_nbfc_for_loan_booking(self, assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type,
                                   request_type, cibil_score, amount, due_date, common_instance):
-        user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, is_booked=True)
-        user_booked_loan = user_loan_status.exists()
-        user_prev_loan_status = user_loan_status.first().status if user_booked_loan else None
+        user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, is_booked=True).first()
+
+        assigned_nbfc = user_loan_status.nbfc_id if user_loan_status else assigned_nbfc
+        # assigned_nbfc line should be removed when we go live in productivity
+
+        user_prev_loan_status = user_loan_status.status if user_loan_status else None
         cached_available_balance = cache.get('available_balance', {})
         if assigned_nbfc:
             available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
-            if available_cash >= amount or user_booked_loan:
+            if available_cash >= amount or user_loan_status:
                 self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_booked_loan)
+                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status)
                 return assigned_nbfc, assigned_nbfc
 
         tenure_days = int(loan_type[1:]) if loan_type.startswith('E') else 45
@@ -518,7 +521,7 @@ class BookNBFCView(APIView):
 
         if updated_nbfc_id:
             self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                       updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_booked_loan)
+                                       updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_loan_status)
 
         return assigned_nbfc, updated_nbfc_id
 
