@@ -10,7 +10,7 @@ admin.site.register(NBFCEligibilityCashFlowHead)
 class CollectionAndLoanBookedDataAdmin(admin.ModelAdmin):
     model = CollectionAndLoanBookedData
     search_fields = ['nbfc']
-    list_display = ['nbfc', 'due_date', 'collection', 'created_at']
+    list_display = ['nbfc', 'due_date', 'collection', 'created_at', 'updated_at']
     list_filter = ['nbfc', 'due_date', 'created_at', 'updated_at']
 
 
