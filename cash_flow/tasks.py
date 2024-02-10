@@ -165,17 +165,21 @@ def populate_collection_amount(self):
     if collection_amount_response:
         collection_amount_data = collection_amount_response.get('data', {})
         for nbfc_id, collection_amount in collection_amount_data.items():
-            try:
-                nbfc_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
-            except ObjectDoesNotExist:
-                continue
 
-            # Try to get an existing record for the NBFC and due_date
-            collection_instance, _ = CollectionAndLoanBookedData.objects.update_or_create(
-                nbfc=nbfc_instance,
-                due_date=due_date,
-                defaults={'collection': collection_amount}
-            )
+            collection_instance = CollectionAndLoanBookedData.objects.filter(
+                nbfc_id=nbfc_id,
+                due_date=due_date
+            ).first()
+
+            if collection_instance:
+                collection_instance.collection = collection_amount
+                collection_instance.save()
+            else:
+                collection_instance = CollectionAndLoanBookedData.objects.create(
+                    nbfc_id=nbfc_id,
+                    due_date=due_date,
+                    collection=collection_amount
+                )
 
             collection_logs = CollectionLogs.objects.filter(collection=collection_instance).first()
 
