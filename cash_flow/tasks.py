@@ -484,7 +484,7 @@ def populate_last_day_balance(self, nbfc=None):
     loan_booked_instance = loan_booked_instance.values('nbfc_id').order_by('nbfc_id').annotate(
         total_amount=Sum('value')
     )
-    loan_booked = dict(loan_booked_instance.values_list('nbfc_id', 'total_amount'))
+    loan_booked_dict = dict(loan_booked_instance.values_list('nbfc_id', 'total_amount'))
 
     prev_due_date = due_date - timedelta(days=1)
 
@@ -499,7 +499,7 @@ def populate_last_day_balance(self, nbfc=None):
         available_cash_flow = Common.get_available_cash_flow(prediction_cash_inflow, prev_day_carry_forward,
                                                              capital_inflow, hold_cash)
 
-        loan_booked = loan_booked.get(nbfc_id, 0)
+        loan_booked = loan_booked_dict.get(nbfc_id, 0)
 
         if loan_booked is None:
             loan_booked = 0
@@ -530,9 +530,9 @@ def task_to_validate_loan_booked(self):
         amount = i.credit_limit
         available_balance = cache.get('available_balance', {})
         value = available_balance.get(nbfc_id, {}).get(user_type, 0)
-
         amount += value
-        available_balance[nbfc_id][user_type] = amount
+
+        available_balance.setdefault(nbfc_id, {})[user_type] = amount
         cache.set('available_balance', available_balance)
 
         lb = LoanBookedLogs(
