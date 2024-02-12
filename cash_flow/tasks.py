@@ -165,17 +165,21 @@ def populate_collection_amount(self):
     if collection_amount_response:
         collection_amount_data = collection_amount_response.get('data', {})
         for nbfc_id, collection_amount in collection_amount_data.items():
-            try:
-                nbfc_instance = NbfcBranchMaster.objects.get(id=nbfc_id)
-            except ObjectDoesNotExist:
-                continue
 
-            # Try to get an existing record for the NBFC and due_date
-            collection_instance, _ = CollectionAndLoanBookedData.objects.update_or_create(
-                nbfc=nbfc_instance,
-                due_date=due_date,
-                defaults={'collection': collection_amount}
-            )
+            collection_instance = CollectionAndLoanBookedData.objects.filter(
+                nbfc_id=nbfc_id,
+                due_date=due_date
+            ).first()
+
+            if collection_instance:
+                collection_instance.collection = collection_amount
+                collection_instance.save()
+            else:
+                collection_instance = CollectionAndLoanBookedData.objects.create(
+                    nbfc_id=nbfc_id,
+                    due_date=due_date,
+                    collection=collection_amount
+                )
 
             collection_logs = CollectionLogs.objects.filter(collection=collection_instance).first()
 
@@ -484,7 +488,7 @@ def populate_last_day_balance(self, nbfc=None):
     loan_booked_instance = loan_booked_instance.values('nbfc_id').order_by('nbfc_id').annotate(
         total_amount=Sum('value')
     )
-    loan_booked = dict(loan_booked_instance.values_list('nbfc_id', 'total_amount'))
+    loan_booked_dict = dict(loan_booked_instance.values_list('nbfc_id', 'total_amount'))
 
     prev_due_date = due_date - timedelta(days=1)
 
@@ -499,7 +503,7 @@ def populate_last_day_balance(self, nbfc=None):
         available_cash_flow = Common.get_available_cash_flow(prediction_cash_inflow, prev_day_carry_forward,
                                                              capital_inflow, hold_cash)
 
-        loan_booked = loan_booked.get(nbfc_id, 0)
+        loan_booked = loan_booked_dict.get(nbfc_id, 0)
 
         if loan_booked is None:
             loan_booked = 0
@@ -530,9 +534,9 @@ def task_to_validate_loan_booked(self):
         amount = i.credit_limit
         available_balance = cache.get('available_balance', {})
         value = available_balance.get(nbfc_id, {}).get(user_type, 0)
-
         amount += value
-        available_balance[nbfc_id][user_type] = amount
+
+        available_balance.setdefault(nbfc_id, {})[user_type] = amount
         cache.set('available_balance', available_balance)
 
         lb = LoanBookedLogs(
