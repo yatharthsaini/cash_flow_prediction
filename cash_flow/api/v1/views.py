@@ -625,7 +625,6 @@ class ExportBookingAmount(APIView):
     """
     api view to export booking amount
     """
-    authentication_classes = [CustomAuthentication]
 
     def get(self, request):
         payload = request.query_params
@@ -638,10 +637,8 @@ class ExportBookingAmount(APIView):
             loans = loans.values('nbfc__branch_name', 'user_type').annotate(
                 booking=Sum('amount')
             )
-            predicted_cash_inflow = ProjectionCollectionData.objects.filter(collection_date=date).values('nbfc')
-            predicted_cash_inflow = predicted_cash_inflow.order_by('nbfc').annotate(
-                total_value=Sum('amount')
-            ).values('nbfc__branch_name', 'total_value')
+            predicted_cash_inflow = ProjectionCollectionData.objects.filter(collection_date=date).values(
+                'nbfc__branch_name', 'new_user_amount', 'old_user_amount')
 
             df2 = pd.DataFrame(predicted_cash_inflow)
 
@@ -650,15 +647,18 @@ class ExportBookingAmount(APIView):
                 col_name = {
                     'nbfc__branch_name': 'NBFC',
                     'user_type': 'User Type',
-                    'total_value': 'Predicted Cash Inflow',
+                    'predicted_amount': 'Predicted Cash Inflow',
                     'booking': 'New Logic Booking',
                 }
 
                 if not df2.empty:
                     df = df.merge(df2, how='left', on='nbfc__branch_name')
                 else:
-                    df['total_value'] = 0
-
+                    df['old_user_amount'] = 0
+                    df['new_user_amount'] = 0
+                df['predicted_amount'] = df.apply(
+                    lambda row: row['old_user_amount'] if row['user_type'] == 'O' else
+                    row['new_user_amount'], axis=1)
                 df.rename(columns=col_name, inplace=True)
                 df['Old Logic Booking'] = ''
                 df['Date'] = date
