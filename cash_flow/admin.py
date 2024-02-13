@@ -1,7 +1,7 @@
 from django.contrib import admin
 from cash_flow.models import (NBFCEligibilityCashFlowHead, CollectionAndLoanBookedData, LoanDetail,
                               ProjectionCollectionData, NbfcBranchMaster, NbfcWiseCollectionData, CapitalInflowData,
-                              HoldCashData, UserRatioData, LoanBookedLogs, CollectionLogs)
+                              HoldCashData, UserRatioData, LoanBookedLogs, CollectionLogs, UserPermissionModel)
 
 # Register your models here.
 admin.site.register(NBFCEligibilityCashFlowHead)
@@ -105,3 +105,13 @@ class CollectionLogsAdmin(admin.ModelAdmin):
 
 
 admin.site.register(CollectionLogs, CollectionLogsAdmin)
+
+
+class UserPermissionAdmin(admin.ModelAdmin):
+    model = UserPermissionModel
+    search_fields = ['user_id', 'email']
+    list_display = ['user_id', 'email', 'role', 'is_active']
+    list_filter = ['role']
+
+
+admin.site.register(UserPermissionModel, UserPermissionAdmin)
