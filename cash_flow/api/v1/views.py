@@ -634,13 +634,15 @@ class ExportBookingAmount(APIView):
             return Response({'error': 'Invalid Date'}, status=status.HTTP_406_NOT_ACCEPTABLE)
         try:
             old_user_loan_booking_data = LoanDetail.objects.filter(
-                updated_at__date=date, is_booked=True, user_type='O').order_by('nbfc_id').annotate(booking=Sum('amount'))
+                updated_at__date=date, is_booked=True, user_type='O'
+            ).values('nbfc__branch_name').order_by('nbfc__branch_name').annotate(old_booking=Sum('amount'))
+
             new_user_loan_booking_data = LoanDetail.objects.filter(
-                updated_at__date=date, is_booked=True, user_type='N').order_by('nbfc_id').annotate(booking=Sum('amount'))
-            old_user_loan_booking_data = old_user_loan_booking_data.values('nbfc__branch_name', 'booking')
-            new_user_loan_booking_data = new_user_loan_booking_data.values('nbfc__branch_name', 'booking')
-            predicted_cash_inflow = ProjectionCollectionData.objects.filter(collection_date=date)
-            predicted_cash_inflow = predicted_cash_inflow.values('nbfc__branch_name', 'amount').order_by('nbfc_id')
+                updated_at__date=date, is_booked=True, user_type='N'
+            ).values('nbfc__branch_name').order_by('nbfc__branch_name').annotate(new_booking=Sum('amount'))
+
+            predicted_cash_inflow = ProjectionCollectionData.objects.filter(collection_date=date).values(
+                'nbfc__branch_name').order_by('nbfc__branch_name').annotate(total_predicted_amount=Sum('amount'))
 
             df_predicted_cash_inflow = pd.DataFrame(predicted_cash_inflow)
             df_old_user_loan_booking_data = pd.DataFrame(old_user_loan_booking_data)
@@ -652,18 +654,20 @@ class ExportBookingAmount(APIView):
             merged_df = pd.merge(merged_df, df_new_user_loan_booking_data, on='nbfc__branch_name', how='left')
 
             # Create a new dataframe with the desired structure
-            result_df = pd.DataFrame()
+            merged_df['Date'] = date
+            merged_df['Booking amount of Old User As Per Existing Logic'] = None
+            merged_df['Booking amount of New User As Per Existing Logic'] = None
+            merged_df.rename(
+                columns={'nbfc__branch_name': 'NBFC', 'old_booking': 'Booking amount of Old User As Per New Logic',
+                         'new_booking': 'Booking amount of New User As Per New Logic', 'total_predicted_amount':
+                             'Predicted Cash Inflow'}, inplace=True)
+            merged_df = merged_df[
+                ['Date', 'NBFC', 'Predicted Cash Inflow', 'Booking amount of Old User As Per Existing Logic',
+                 'Booking amount of New User As Per Existing Logic',
+                 'Booking amount of Old User As Per New Logic',
+                 'Booking amount of New User As Per New Logic']]
 
-            # Add columns to the result dataframe
-            result_df['Date'] = [date] * len(merged_df)
-            result_df['NBFC'] = merged_df['nbfc__branch_name']
-            result_df['Predicted Cash Inflow'] = merged_df['amount']
-            result_df['Booking amount of Old User As Per New Logic'] = merged_df['booking_x']
-            result_df['Booking amount of New User As Per New Logic'] = merged_df['booking_y']
-            result_df['Booking amount of Old User As Per Existing Logic'] = None
-            result_df['Booking amount of New User As Per Existing Logic'] = None
-
-            csv_data = result_df.to_csv(index=False)
+            csv_data = merged_df.to_csv(index=False)
             csv_bytes = csv_data.encode('utf-8')
             base64_data = base64.b64encode(csv_bytes).decode('utf-8')
 
