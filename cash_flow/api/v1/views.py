@@ -633,43 +633,41 @@ class ExportBookingAmount(APIView):
         if not date:
             return Response({'error': 'Invalid Date'}, status=status.HTTP_406_NOT_ACCEPTABLE)
         try:
-            loans = LoanDetail.objects.filter(updated_at__date=date, is_booked=True).order_by('nbfc_id')
-            loans = loans.values('nbfc__branch_name', 'user_type').annotate(
-                booking=Sum('amount')
-            )
-            predicted_cash_inflow = ProjectionCollectionData.objects.filter(collection_date=date).values(
-                'nbfc__branch_name', 'new_user_amount', 'old_user_amount')
+            old_user_loan_booking_data = LoanDetail.objects.filter(
+                updated_at__date=date, is_booked=True, user_type='O').order_by('nbfc_id').annotate(booking=Sum('amount'))
+            new_user_loan_booking_data = LoanDetail.objects.filter(
+                updated_at__date=date, is_booked=True, user_type='N').order_by('nbfc_id').annotate(booking=Sum('amount'))
+            old_user_loan_booking_data = old_user_loan_booking_data.values('nbfc__branch_name', 'booking')
+            new_user_loan_booking_data = new_user_loan_booking_data.values('nbfc__branch_name', 'booking')
+            predicted_cash_inflow = ProjectionCollectionData.objects.filter(collection_date=date)
+            predicted_cash_inflow = predicted_cash_inflow.values('nbfc__branch_name', 'amount').order_by('nbfc_id')
 
-            df2 = pd.DataFrame(predicted_cash_inflow)
+            df_predicted_cash_inflow = pd.DataFrame(predicted_cash_inflow)
+            df_old_user_loan_booking_data = pd.DataFrame(old_user_loan_booking_data)
+            df_new_user_loan_booking_data = pd.DataFrame(new_user_loan_booking_data)
 
-            df = pd.DataFrame(loans)
-            if not df.empty:
-                col_name = {
-                    'nbfc__branch_name': 'NBFC',
-                    'user_type': 'User Type',
-                    'predicted_amount': 'Predicted Cash Inflow',
-                    'booking': 'New Logic Booking',
-                }
+            # Merge dataframes on 'nbfc__branch_name'
+            merged_df = pd.merge(df_predicted_cash_inflow, df_old_user_loan_booking_data, on='nbfc__branch_name',
+                                 how='left')
+            merged_df = pd.merge(merged_df, df_new_user_loan_booking_data, on='nbfc__branch_name', how='left')
 
-                if not df2.empty:
-                    df = df.merge(df2, how='left', on='nbfc__branch_name')
-                else:
-                    df['old_user_amount'] = 0
-                    df['new_user_amount'] = 0
-                df['predicted_amount'] = df.apply(
-                    lambda row: row['old_user_amount'] if row['user_type'] == 'O' else
-                    row['new_user_amount'], axis=1)
-                df.rename(columns=col_name, inplace=True)
-                df['Old Logic Booking'] = ''
-                df['Date'] = date
-                df = df[
-                    ['Date', 'NBFC', 'Predicted Cash Inflow', 'User Type', 'Old Logic Booking', 'New Logic Booking']]
-                csv_data = df.to_csv(index=False)
-                csv_bytes = csv_data.encode('utf-8')
-                base64_data = base64.b64encode(csv_bytes).decode('utf-8')
+            # Create a new dataframe with the desired structure
+            result_df = pd.DataFrame()
 
-                return Response({'message': 'Success', 'url': 'data:text/csv;base64,' + base64_data})
-            return Response({'error': 'No data found'}, status=status.HTTP_400_BAD_REQUEST)
+            # Add columns to the result dataframe
+            result_df['Date'] = [date] * len(merged_df)
+            result_df['NBFC'] = merged_df['nbfc__branch_name']
+            result_df['Predicted Cash Inflow'] = merged_df['amount']
+            result_df['Booking amount of Old User As Per New Logic'] = merged_df['booking_x']
+            result_df['Booking amount of New User As Per New Logic'] = merged_df['booking_y']
+            result_df['Booking amount of Old User As Per Existing Logic'] = None
+            result_df['Booking amount of New User As Per Existing Logic'] = None
+
+            csv_data = result_df.to_csv(index=False)
+            csv_bytes = csv_data.encode('utf-8')
+            base64_data = base64.b64encode(csv_bytes).decode('utf-8')
+
+            return Response({'message': 'Success', 'url': 'data:text/csv;base64,' + base64_data})
         except Exception as e:
             msg = str(e)
             return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
