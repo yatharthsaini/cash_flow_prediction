@@ -431,53 +431,49 @@ class BookNBFCView(APIView):
     authentication_classes = [ServerAuthentication]
 
     def post(self, request):
-        try:
-            payload = request.data
-            assigned_nbfc = payload.get('assigned_nbfc', None)
-            if assigned_nbfc == 27:
-                return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
-                                status=status.HTTP_200_OK)
+        payload = request.data
+        assigned_nbfc = payload.get('assigned_nbfc', None)
+        if assigned_nbfc == 27:
+            return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
+                            status=status.HTTP_200_OK)
 
-            required_fields = ['user_id', 'loan_type', 'request_type', 'cibil_score', 'credit_limit']
-            for i in required_fields:
-                if not payload.get(i):
-                    return Response({'error': f'Invalid {i} value'}, status=status.HTTP_400_BAD_REQUEST)
+        required_fields = ['user_id', 'loan_type', 'request_type', 'cibil_score', 'credit_limit']
+        for i in required_fields:
+            if not payload.get(i):
+                return Response({'error': f'Invalid {i} value'}, status=status.HTTP_400_BAD_REQUEST)
 
-            user_id = payload['user_id']
-            loan_type = payload['loan_type']
-            request_type = payload['request_type']
-            cibil_score = payload['cibil_score']
-            credit_limit = payload['credit_limit']
+        user_id = payload['user_id']
+        loan_type = payload['loan_type']
+        request_type = payload['request_type']
+        cibil_score = payload['cibil_score']
+        credit_limit = payload['credit_limit']
 
-            loan_id = payload.get('loan_id', None)
-            user_type = payload.get('user_type', 'O')
-            due_date = datetime.now().date()
+        loan_id = payload.get('loan_id', None)
+        user_type = payload.get('user_type', 'O')
+        due_date = datetime.now().date()
 
-            amount = payload.get('amount', credit_limit)
-            amount = amount if request_type == 'LAD' else credit_limit
+        amount = payload.get('amount', credit_limit)
+        amount = amount if request_type == 'LAD' else credit_limit
 
-            if assigned_nbfc == 5:
-                return Response(
-                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc}},
-                    status=status.HTTP_200_OK)
+        if assigned_nbfc == 5:
+            return Response(
+                {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc}},
+                status=status.HTTP_200_OK)
 
-            common_instance = Common()
-            assigned_nbfc, updated_nbfc_id = self.get_nbfc_for_loan_booking(
-                assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
-                due_date, common_instance)
+        common_instance = Common()
+        assigned_nbfc, updated_nbfc_id = self.get_nbfc_for_loan_booking(
+            assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
+            due_date, common_instance)
 
-            if assigned_nbfc == updated_nbfc_id:
-                return Response(
-                    {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
-                    status=status.HTTP_200_OK)
-
+        if assigned_nbfc == updated_nbfc_id:
             return Response(
                 {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
                 status=status.HTTP_200_OK)
 
-        except Exception as e:
-            error_message = str(e)
-            return Response({'error': error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
+            status=status.HTTP_200_OK)
+
 
     def get_nbfc_for_loan_booking(self, assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type,
                                   request_type, cibil_score, amount, due_date, common_instance):
