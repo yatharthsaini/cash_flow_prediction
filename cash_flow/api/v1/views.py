@@ -644,15 +644,12 @@ class ExportBookingAmount(APIView):
             df_old_user_loan_booking_data = pd.DataFrame(old_user_loan_booking_data)
             df_new_user_loan_booking_data = pd.DataFrame(new_user_loan_booking_data)
 
-            if ('nbfc__branch_name' in df_predicted_cash_inflow.columns and
-                    'nbfc__branch_name' in df_old_user_loan_booking_data.columns and
-                    'nbfc__branch_name' in df_new_user_loan_booking_data.columns):
-                merged_df = pd.merge(df_predicted_cash_inflow, df_old_user_loan_booking_data, on='nbfc__branch_name',
-                                     how='left')
-                merged_df = pd.merge(merged_df, df_new_user_loan_booking_data, on='nbfc__branch_name', how='left')
-            else:
-                return Response({'message': 'No loan Booking data found for the given date'},
-                                status=status.HTTP_404_NOT_FOUND)
+            if df_predicted_cash_inflow.empty or df_old_user_loan_booking_data.empty or df_new_user_loan_booking_data.empty:
+                return Response({'message': 'No data found for the given date'}, status=status.HTTP_404_NOT_FOUND)
+
+            merged_df = pd.merge(df_predicted_cash_inflow, df_old_user_loan_booking_data, on='nbfc__branch_name',
+                                 how='left')
+            merged_df = pd.merge(merged_df, df_new_user_loan_booking_data, on='nbfc__branch_name', how='left')
 
             # Create a new dataframe with the desired structure
             merged_df['Date'] = date
