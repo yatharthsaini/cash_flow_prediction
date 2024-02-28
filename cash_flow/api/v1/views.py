@@ -474,7 +474,6 @@ class BookNBFCView(APIView):
             {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
             status=status.HTTP_200_OK)
 
-
     def get_nbfc_for_loan_booking(self, assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type,
                                   request_type, cibil_score, amount, due_date, common_instance):
         user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, is_booked=True).first()
@@ -766,3 +765,38 @@ class RealTimeNBFCDetail(APIView):
         except Exception as e:
             msg = str(e)
             return Response({'error': msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GetLoanDetailData(APIView):
+
+    def get(self, request):
+        payload = request.query_params
+        start_date = payload.get('start_date')
+        end_date = payload.get('end_date')
+        if start_date is None or end_date is None:
+            return Response({'error': 'start_date and end_date are required'},
+                            status=status.HTTP_406_NOT_ACCEPTABLE)
+
+        loan_status = payload.get('loan_status', None)
+        if loan_status and loan_status not in ['P', 'I', 'F']:
+            return Response({'error': 'Invalid loan status'}, status=status.HTTP_400_BAD_REQUEST)
+        loan_data_df = pd.DataFrame()
+        if loan_status:
+            loan_data = LoanDetail.objects.filter(status=loan_status, updated_at__date__gte=start_date,
+                                                  updated_at__date__lte=end_date).values()
+            loan_data_df = pd.DataFrame(loan_data)
+        else:
+            loan_data = LoanDetail.objects.filter(updated_at__date__gte=start_date,
+                                                  updated_at__date__lte=end_date).values()
+            loan_data_df = pd.DataFrame(loan_data)
+
+        if loan_data_df.empty:
+            return Response({'message': 'No booking data found'}, status=status.HTTP_404_NOT_FOUND)
+
+        csv_data = loan_data_df.to_csv(index=False)
+        csv_bytes = csv_data.encode('utf-8')
+        base64_data = base64.b64encode(csv_bytes).decode('utf-8')
+
+        return Response({'message': 'Success', 'url': 'data:text/csv;base64,' + base64_data})
+
+
