@@ -428,7 +428,7 @@ class SuccessStatus(APIView):
 
 
 class BookNBFCView(APIView):
-    authentication_classes = [ServerAuthentication]
+    # authentication_classes = [ServerAuthentication]
 
     def post(self, request):
         payload = request.data
@@ -455,6 +455,12 @@ class BookNBFCView(APIView):
         amount = payload.get('amount', credit_limit)
         amount = amount if request_type == 'LAD' else credit_limit
 
+        if loan_id and LoanDetail.objects.filter(loan_id=loan_id).exists():
+            if LoanDetail.objects.filter(loan_id=loan_id).first().status == 'P':
+                return Response(
+                    {'message': 'The given loan is already being disbursed'},
+                    status=status.HTTP_200_OK)
+
         if assigned_nbfc == 5:
             return Response(
                 {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc}},
@@ -476,7 +482,9 @@ class BookNBFCView(APIView):
 
     def get_nbfc_for_loan_booking(self, assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type,
                                   request_type, cibil_score, amount, due_date, common_instance):
-        user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, is_booked=True).first()
+        today = datetime.now().date()
+        user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, updated_at__date=today,
+                                                     is_booked=True).first()
 
         assigned_nbfc = user_loan_status.nbfc_id if user_loan_status else assigned_nbfc
         # assigned_nbfc line should be removed when we go live in productivity
