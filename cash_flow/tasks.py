@@ -7,7 +7,6 @@ from django.utils import timezone
 from django.core.management import call_command
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.cache import cache
-from django.db import transaction
 from django.db.models import Sum, When, Case, F
 from cash_flow.external_calls import (get_due_amount_response, get_collection_poll_response, get_nbfc_list,
                                       get_collection_amount_response, get_loan_booked_data, get_failed_loan_data)
@@ -432,12 +431,14 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
         loan_log = {}
     user_loan = LoanDetail.objects.filter(user_id=user_id, created_at__date=due_date).exclude(status='F')
     if user_loan.exists():
-        user_loan.update(**loan_data)
         loan = user_loan.first()
+        for i in loan_data:
+            setattr(loan, i, loan_data[i])
+        loan.save()
     else:
         loan = LoanDetail(**loan_data)
         loan.save()
-    if loan_log and is_booked is False:
+    if loan_log:
         LoanBookedLogs.objects.create(loan=loan, **loan_log)
     if booked_amount and (is_booked is False or prev_loan_status != current_loan_status):
         booked_data = cache.get('available_balance', {})
