@@ -4,7 +4,7 @@ from django.urls import path
 from cash_flow.api.v1.views import (CapitalInflowDataView, HoldCashDataView, UserRatioDataView,
                                     GetCashFlowView, NBFCBranchView, BookNBFCView, NBFCEligibilityViewSet,
                                     CreatePredictionData, ExportBookingAmount,
-                                    UserPermissionModelViewSet, MigrateView, RealTimeNBFCDetail)
+                                    UserPermissionModelViewSet, MigrateView, RealTimeNBFCDetail, GetLoanDetailData)
 
 router = routers.DefaultRouter()
 router.register(r'user-permissions', UserPermissionModelViewSet, basename='user-permissions')
@@ -28,7 +28,7 @@ urlpatterns = [
          name='user-permissions'),
     path('migrate/', MigrateView.as_view(), name='migrate'),
     path('real-time-nbfc-detail/', RealTimeNBFCDetail.as_view(), name='real-time-nbfc-detail'),
-
+    path('get-loan-detail-data/', GetLoanDetailData.as_view(), name='get-loan-detail-data'),
 ]
 
 urlpatterns += router.urls

@@ -3,8 +3,17 @@ from cash_flow.models import (NBFCEligibilityCashFlowHead, CollectionAndLoanBook
                               ProjectionCollectionData, NbfcBranchMaster, NbfcWiseCollectionData, CapitalInflowData,
                               HoldCashData, UserRatioData, LoanBookedLogs, CollectionLogs, UserPermissionModel)
 
+
+class NBFCEligibilityAdmin(admin.ModelAdmin):
+    model = NBFCEligibilityCashFlowHead
+    search_fields = ['nbfc']
+    list_display = ['nbfc', 'loan_type', 'min_cibil_score', 'min_loan_tenure', 'max_loan_tenure', 'min_loan_amount',
+                    'max_loan_amount', 'should_check']
+    list_filter = ['loan_type']
+
+
 # Register your models here.
-admin.site.register(NBFCEligibilityCashFlowHead)
+admin.site.register(NBFCEligibilityCashFlowHead, NBFCEligibilityAdmin)
 
 
 class CollectionAndLoanBookedDataAdmin(admin.ModelAdmin):
@@ -20,7 +29,8 @@ admin.site.register(CollectionAndLoanBookedData, CollectionAndLoanBookedDataAdmi
 class LoanDetailAdmin(admin.ModelAdmin):
     model = LoanDetail
     search_fields = ['nbfc', 'user_id', 'status', 'credit_limit', 'user_type']
-    list_display = ['nbfc', 'user_id', 'credit_limit', 'status', 'user_type', 'created_at', 'updated_at']
+    list_display = ['id', 'loan_id', 'loan_type', 'nbfc', 'user_id', 'credit_limit', 'status', 'user_type', 'created_at',
+                    'updated_at']
     list_filter = ['nbfc', 'status', 'user_type', 'created_at', 'updated_at']
 
 
