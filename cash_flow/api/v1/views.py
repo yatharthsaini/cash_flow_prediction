@@ -455,8 +455,9 @@ class BookNBFCView(APIView):
         amount = payload.get('amount', credit_limit)
         amount = amount if request_type == 'LAD' else credit_limit
 
-        if loan_id and LoanDetail.objects.filter(loan_id=loan_id).exists():
-            if LoanDetail.objects.filter(loan_id=loan_id).first().status == 'P':
+        if loan_id:
+            loan_query = LoanDetail.objects.filter(loan_id=loan_id)
+            if loan_query.exists() and loan_query.first().status == 'P':
                 return Response(
                     {'message': 'The given loan is already being disbursed'},
                     status=status.HTTP_200_OK)
