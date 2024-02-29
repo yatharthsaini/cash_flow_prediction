@@ -460,7 +460,7 @@ class BookNBFCView(APIView):
             if loan_query.exists() and loan_query.first().status == 'P':
                 return Response(
                     {'message': 'The given loan is already being disbursed'},
-                    status=status.HTTP_200_OK)
+                    status=status.HTTP_400_BAD_REQUEST)
 
         if assigned_nbfc == 5:
             return Response(
