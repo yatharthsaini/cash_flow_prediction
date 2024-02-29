@@ -428,7 +428,7 @@ class SuccessStatus(APIView):
 
 
 class BookNBFCView(APIView):
-    # authentication_classes = [ServerAuthentication]
+    authentication_classes = [ServerAuthentication]
 
     def post(self, request):
         payload = request.data
