@@ -498,7 +498,8 @@ class BookNBFCView(APIView):
             available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
             if available_cash >= amount or user_loan_status:
                 self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status)
+                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status,
+                                           disbursal_date)
                 return assigned_nbfc, assigned_nbfc
 
         tenure_days = int(loan_type[1:]) if loan_type.startswith('E') else 45
