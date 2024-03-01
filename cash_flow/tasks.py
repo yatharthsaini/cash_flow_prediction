@@ -320,7 +320,7 @@ def task_for_loan_booked(self, nbfc_id=None):
         filtered_dict['nbfc_id'] = nbfc_id
 
     due_date = datetime.now().date()
-    loan_booked_instance = LoanDetail.objects.filter(updated_at__date=due_date, is_booked=True,
+    loan_booked_instance = LoanDetail.objects.filter(disbursal_date=due_date, is_booked=True,
                                                      **filtered_dict).exclude(status='F')
     loan_booked_instance = loan_booked_instance.annotate(
         value=Case(

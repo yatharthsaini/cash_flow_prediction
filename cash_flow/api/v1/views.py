@@ -458,8 +458,8 @@ class BookNBFCView(APIView):
         disbursal_date = request.data.get('disbursal_date', None)
 
         if loan_id:
-            loan_obj = LoanDetail.objects.filter(loan_id=loan_id).first()
-            if loan_obj and loan_obj.status == 'P':
+            loan_obj = LoanDetail.objects.filter(loan_id=loan_id, status='P').first()
+            if loan_obj:
                 return Response(
                     {'message': 'The given loan is already being disbursed'},
                     status=status.HTTP_400_BAD_REQUEST)
