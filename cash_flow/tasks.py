@@ -210,7 +210,6 @@ def populate_loan_booked_amount(self):
     if loan_booked_response:
         loan_booked_data = loan_booked_response.get('data', {})
         for nbfc_id, loan_booked in loan_booked_data.items():
-
             # Try to get an existing record for the NBFC and due_date
             CollectionAndLoanBookedData.objects.update_or_create(
                 nbfc_id=nbfc_id,
@@ -353,7 +352,7 @@ def task_for_loan_booked(self, nbfc_id=None):
 @celery_error_email
 def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
                           nbfc_id, prev_loan_status=None, is_booked=False, loan_amount=None,
-                          loan_id=None):
+                          loan_id=None, disbursal_date=None):
     """
     helper function to book the loan with logging in models.LoanBookedLogs
     we have to book the loans at the loan application level and loan applied status
@@ -371,6 +370,7 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
     :param loan_amount:
     :param nbfc_id: nbfc to be booked in the loan detail
     :param loan_id:
+    :param disbursal_date:
     :return:
     """
     due_date = datetime.now().date()
@@ -410,7 +410,8 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
             'amount': loan_amount,
             'user_type': user_type,
             'is_booked': True,
-            'status': 'P'
+            'status': 'P',
+            'disbursal_date': disbursal_date
         }
         loan_log = {
             'request_type': request_type,

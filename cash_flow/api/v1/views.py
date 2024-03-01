@@ -455,6 +455,8 @@ class BookNBFCView(APIView):
         amount = payload.get('amount', credit_limit)
         amount = amount if request_type == 'LAD' else credit_limit
 
+        disbursal_date = request.data.get('disbursal_date', None)
+
         if loan_id:
             loan_obj = LoanDetail.objects.filter(loan_id=loan_id).first()
             if loan_obj and loan_obj.status == 'P':
@@ -470,7 +472,7 @@ class BookNBFCView(APIView):
         common_instance = Common()
         assigned_nbfc, updated_nbfc_id = self.get_nbfc_for_loan_booking(
             assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
-            due_date, common_instance)
+            due_date, common_instance, disbursal_date)
 
         if assigned_nbfc == updated_nbfc_id:
             return Response(
@@ -482,7 +484,7 @@ class BookNBFCView(APIView):
             status=status.HTTP_200_OK)
 
     def get_nbfc_for_loan_booking(self, assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type,
-                                  request_type, cibil_score, amount, due_date, common_instance):
+                                  request_type, cibil_score, amount, due_date, common_instance, disbursal_date):
         today = datetime.now().date()
         user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, updated_at__date=today,
                                                      is_booked=True).first()
@@ -525,12 +527,13 @@ class BookNBFCView(APIView):
 
         if updated_nbfc_id:
             self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                       updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_loan_status)
+                                       updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_loan_status,
+                                       disbursal_date)
 
         return assigned_nbfc, updated_nbfc_id
 
     def task_for_loan_booking(self, credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                              nbfc_id, loan_id, prev_loan_status, loan_amount, is_booked):
+                              nbfc_id, loan_id, prev_loan_status, loan_amount, is_booked, disbursal_date):
         task_for_loan_booking(
             credit_limit=credit_limit,
             user_type=user_type,
@@ -542,7 +545,8 @@ class BookNBFCView(APIView):
             loan_id=loan_id,
             prev_loan_status=prev_loan_status,
             loan_amount=loan_amount,
-            is_booked=is_booked
+            is_booked=is_booked,
+            disbursal_date=disbursal_date
         )
 
 
