@@ -488,7 +488,6 @@ class BookNBFCView(APIView):
         today = datetime.now().date()
         user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, updated_at__date=today,
                                                      is_booked=True).first()
-
         assigned_nbfc = user_loan_status.nbfc_id if user_loan_status else assigned_nbfc
         # assigned_nbfc line should be removed when we go live in productivity
 
@@ -643,11 +642,11 @@ class ExportBookingAmount(APIView):
             return Response({'error': 'Invalid Date'}, status=status.HTTP_406_NOT_ACCEPTABLE)
         try:
             old_user_loan_booking_data = LoanDetail.objects.filter(
-                updated_at__date=date, is_booked=True, user_type='O'
+                disbursal_date=date, is_booked=True, user_type='O'
             ).values('nbfc__branch_name').order_by('nbfc__branch_name').annotate(old_booking=Sum('amount'))
 
             new_user_loan_booking_data = LoanDetail.objects.filter(
-                updated_at__date=date, is_booked=True, user_type='N'
+                disbursal_date=date, is_booked=True, user_type='N'
             ).values('nbfc__branch_name').order_by('nbfc__branch_name').annotate(new_booking=Sum('amount'))
 
             predicted_cash_inflow = ProjectionCollectionData.objects.filter(collection_date=date).values(
@@ -796,12 +795,12 @@ class GetLoanDetailData(APIView):
             return Response({'error': 'Invalid loan status'}, status=status.HTTP_400_BAD_REQUEST)
         loan_data_df = pd.DataFrame()
         if loan_status:
-            loan_data = LoanDetail.objects.filter(status=loan_status, updated_at__date__gte=start_date,
-                                                  updated_at__date__lte=end_date).values()
+            loan_data = LoanDetail.objects.filter(status=loan_status, disbursal_date__gte=start_date,
+                                                  disbursal_date__lte=end_date).values()
             loan_data_df = pd.DataFrame(loan_data)
         else:
-            loan_data = LoanDetail.objects.filter(updated_at__date__gte=start_date,
-                                                  updated_at__date__lte=end_date).values()
+            loan_data = LoanDetail.objects.filter(disbursal_date__gte=start_date,
+                                                  disbursal_date__lte=end_date).values()
             loan_data_df = pd.DataFrame(loan_data)
 
         if loan_data_df.empty:
