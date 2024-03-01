@@ -455,9 +455,11 @@ class BookNBFCView(APIView):
         amount = payload.get('amount', credit_limit)
         amount = amount if request_type == 'LAD' else credit_limit
 
+        disbursal_date = request.data.get('disbursal_date', None)
+
         if loan_id:
-            loan_obj = LoanDetail.objects.filter(loan_id=loan_id).first()
-            if loan_obj and loan_obj.status == 'P':
+            loan_obj = LoanDetail.objects.filter(loan_id=loan_id, status='P').first()
+            if loan_obj:
                 return Response(
                     {'message': 'The given loan is already being disbursed'},
                     status=status.HTTP_400_BAD_REQUEST)
@@ -470,7 +472,7 @@ class BookNBFCView(APIView):
         common_instance = Common()
         assigned_nbfc, updated_nbfc_id = self.get_nbfc_for_loan_booking(
             assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
-            due_date, common_instance)
+            due_date, common_instance, disbursal_date)
 
         if assigned_nbfc == updated_nbfc_id:
             return Response(
@@ -482,11 +484,10 @@ class BookNBFCView(APIView):
             status=status.HTTP_200_OK)
 
     def get_nbfc_for_loan_booking(self, assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type,
-                                  request_type, cibil_score, amount, due_date, common_instance):
+                                  request_type, cibil_score, amount, due_date, common_instance, disbursal_date):
         today = datetime.now().date()
         user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, updated_at__date=today,
                                                      is_booked=True).first()
-
         assigned_nbfc = user_loan_status.nbfc_id if user_loan_status else assigned_nbfc
         # assigned_nbfc line should be removed when we go live in productivity
 
@@ -496,7 +497,8 @@ class BookNBFCView(APIView):
             available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
             if available_cash >= amount or user_loan_status:
                 self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status)
+                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status,
+                                           disbursal_date)
                 return assigned_nbfc, assigned_nbfc
 
         tenure_days = int(loan_type[1:]) if loan_type.startswith('E') else 45
@@ -525,12 +527,13 @@ class BookNBFCView(APIView):
 
         if updated_nbfc_id:
             self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                       updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_loan_status)
+                                       updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_loan_status,
+                                       disbursal_date)
 
         return assigned_nbfc, updated_nbfc_id
 
     def task_for_loan_booking(self, credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                              nbfc_id, loan_id, prev_loan_status, loan_amount, is_booked):
+                              nbfc_id, loan_id, prev_loan_status, loan_amount, is_booked, disbursal_date):
         task_for_loan_booking(
             credit_limit=credit_limit,
             user_type=user_type,
@@ -542,7 +545,8 @@ class BookNBFCView(APIView):
             loan_id=loan_id,
             prev_loan_status=prev_loan_status,
             loan_amount=loan_amount,
-            is_booked=is_booked
+            is_booked=is_booked,
+            disbursal_date=disbursal_date
         )
 
 
@@ -638,11 +642,11 @@ class ExportBookingAmount(APIView):
             return Response({'error': 'Invalid Date'}, status=status.HTTP_406_NOT_ACCEPTABLE)
         try:
             old_user_loan_booking_data = LoanDetail.objects.filter(
-                updated_at__date=date, is_booked=True, user_type='O'
+                disbursal_date=date, is_booked=True, user_type='O'
             ).values('nbfc__branch_name').order_by('nbfc__branch_name').annotate(old_booking=Sum('amount'))
 
             new_user_loan_booking_data = LoanDetail.objects.filter(
-                updated_at__date=date, is_booked=True, user_type='N'
+                disbursal_date=date, is_booked=True, user_type='N'
             ).values('nbfc__branch_name').order_by('nbfc__branch_name').annotate(new_booking=Sum('amount'))
 
             predicted_cash_inflow = ProjectionCollectionData.objects.filter(collection_date=date).values(
@@ -791,12 +795,12 @@ class GetLoanDetailData(APIView):
             return Response({'error': 'Invalid loan status'}, status=status.HTTP_400_BAD_REQUEST)
         loan_data_df = pd.DataFrame()
         if loan_status:
-            loan_data = LoanDetail.objects.filter(status=loan_status, updated_at__date__gte=start_date,
-                                                  updated_at__date__lte=end_date).values()
+            loan_data = LoanDetail.objects.filter(status=loan_status, disbursal_date__gte=start_date,
+                                                  disbursal_date__lte=end_date).values()
             loan_data_df = pd.DataFrame(loan_data)
         else:
-            loan_data = LoanDetail.objects.filter(updated_at__date__gte=start_date,
-                                                  updated_at__date__lte=end_date).values()
+            loan_data = LoanDetail.objects.filter(disbursal_date__gte=start_date,
+                                                  disbursal_date__lte=end_date).values()
             loan_data_df = pd.DataFrame(loan_data)
 
         if loan_data_df.empty:
