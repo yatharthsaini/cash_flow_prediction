@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 LOAN_TYPE_CHOICES = (
         ('P', 'PAYDAY'),
@@ -228,6 +229,26 @@ class LoanDetail(CreatedUpdatedAtMixin):
     user_type = models.CharField(max_length=1, choices=USER_TYPE_CHOICES, default='O')
     cibil_score = models.IntegerField()
     is_booked = models.BooleanField(default=False)
+    disbursal_date = models.DateField(null=True)
+
+    @staticmethod
+    def get_filtered_data(start_date=None, end_date=None, disbursal_date=None, status=None):
+        """
+        static function for getting the filtered data based upon the input parameters if given
+        """
+        loan_detail_query = LoanDetail.objects.all()
+        filters = Q()
+        if start_date:
+            filters &= Q(updated_at__date__gte=start_date)
+        if end_date:
+            filters &= Q(updated_at__date__lte=end_date)
+        if disbursal_date:
+            filters &= Q(disbursal_date=disbursal_date)
+        if status:
+            filters &= Q(status=status)
+
+        loan_detail_query = loan_detail_query.filter(filters)
+        return loan_detail_query
 
 
 class LoanBookedLogs(CreatedUpdatedAtMixin):
