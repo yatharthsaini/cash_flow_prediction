@@ -22,7 +22,7 @@ def create_should_check_cache(sender, instance, **kwargs):
 @receiver(post_save, sender=NBFCEligibilityCashFlowHead)
 def create_should_assign_cache(sender, instance, **kwargs):
     """
-    signal function to create cache for should check attribute
+    signal function to create cache for should assign attribute
     :return:
     """
     try:
