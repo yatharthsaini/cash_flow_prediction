@@ -351,7 +351,7 @@ def task_for_loan_booked(self, nbfc_id=None):
 @app.task(bind=True)
 @celery_error_email
 def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
-                          nbfc_id, prev_loan_status=None, is_booked=False, loan_amount=None,
+                          nbfc_id, age, prev_loan_status=None, is_booked=False, loan_amount=None,
                           loan_id=None, disbursal_date=None):
     """
     helper function to book the loan with logging in models.LoanBookedLogs
@@ -370,6 +370,7 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
     :param loan_amount:
     :param nbfc_id: nbfc to be booked in the loan detail
     :param loan_id:
+    :param age:
     :param disbursal_date:
     :return:
     """
@@ -388,7 +389,8 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
             'loan_id': loan_id,
             'user_type': user_type,
             'is_booked': True,
-            'status': 'I'
+            'status': 'I',
+            'age': age
         }
         loan_log = {
             'amount': credit_limit,
@@ -411,7 +413,8 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
             'user_type': user_type,
             'is_booked': True,
             'status': 'P',
-            'disbursal_date': disbursal_date
+            'disbursal_date': disbursal_date,
+            'age': age
         }
         loan_log = {
             'request_type': request_type,
@@ -428,6 +431,7 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
             'cibil_score': cibil_score,
             'credit_limit': credit_limit,
             'user_type': user_type,
+            'age': age
         }
         loan_log = {}
     user_loan = LoanDetail.objects.filter(user_id=user_id, created_at__date=due_date).exclude(status='F')
