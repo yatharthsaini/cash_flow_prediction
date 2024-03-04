@@ -437,7 +437,7 @@ class BookNBFCView(APIView):
             return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
                             status=status.HTTP_200_OK)
 
-        required_fields = ['user_id', 'loan_type', 'request_type', 'cibil_score', 'credit_limit']
+        required_fields = ['user_id', 'loan_type', 'request_type', 'cibil_score', 'credit_limit', 'age']
         for i in required_fields:
             if not payload.get(i):
                 return Response({'error': f'Invalid {i} value'}, status=status.HTTP_400_BAD_REQUEST)
@@ -447,6 +447,7 @@ class BookNBFCView(APIView):
         request_type = payload['request_type']
         cibil_score = payload['cibil_score']
         credit_limit = payload['credit_limit']
+        age = payload['age']
 
         loan_id = payload.get('loan_id', None)
         user_type = payload.get('user_type', 'O')
@@ -472,7 +473,7 @@ class BookNBFCView(APIView):
         common_instance = Common()
         assigned_nbfc, updated_nbfc_id = self.get_nbfc_for_loan_booking(
             assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
-            due_date, common_instance, disbursal_date)
+            due_date, common_instance, disbursal_date, age)
 
         if assigned_nbfc == updated_nbfc_id:
             return Response(
@@ -484,7 +485,7 @@ class BookNBFCView(APIView):
             status=status.HTTP_200_OK)
 
     def get_nbfc_for_loan_booking(self, assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type,
-                                  request_type, cibil_score, amount, due_date, common_instance, disbursal_date):
+                                  request_type, cibil_score, amount, due_date, common_instance, disbursal_date, age):
         today = datetime.now().date()
         user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, updated_at__date=today,
                                                      is_booked=True).first()
@@ -498,7 +499,7 @@ class BookNBFCView(APIView):
             if available_cash >= amount or user_loan_status:
                 self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
                                            assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status,
-                                           disbursal_date)
+                                           disbursal_date, age)
                 return assigned_nbfc, assigned_nbfc
 
         tenure_days = int(loan_type[1:]) if loan_type.startswith('E') else 45
@@ -511,6 +512,8 @@ class BookNBFCView(APIView):
             max_loan_tenure__gte=tenure_days,
             min_loan_amount__lte=amount,
             max_loan_amount__gte=amount,
+            min_age__lte=age,
+            max_age__gte=age,
             should_check=True
         )
 
@@ -528,12 +531,12 @@ class BookNBFCView(APIView):
         if updated_nbfc_id:
             self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
                                        updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_loan_status,
-                                       disbursal_date)
+                                       disbursal_date, age)
 
         return assigned_nbfc, updated_nbfc_id
 
     def task_for_loan_booking(self, credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                              nbfc_id, loan_id, prev_loan_status, loan_amount, is_booked, disbursal_date):
+                              nbfc_id, loan_id, prev_loan_status, loan_amount, is_booked, disbursal_date, age):
         task_for_loan_booking(
             credit_limit=credit_limit,
             user_type=user_type,
@@ -546,7 +549,8 @@ class BookNBFCView(APIView):
             prev_loan_status=prev_loan_status,
             loan_amount=loan_amount,
             is_booked=is_booked,
-            disbursal_date=disbursal_date
+            disbursal_date=disbursal_date,
+            age=age
         )
 
 
