@@ -433,8 +433,9 @@ class BookNBFCView(APIView):
     def post(self, request):
         payload = request.data
         assigned_nbfc = payload.get('assigned_nbfc', None)
+        should_check_list = cache.get('should_check', None)
 
-        if assigned_nbfc == 27:
+        if assigned_nbfc and assigned_nbfc not in should_check_list:
             return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
                             status=status.HTTP_200_OK)
 
@@ -516,6 +517,8 @@ class BookNBFCView(APIView):
         )
 
         eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
+        should_assign_list = cache.get('should_assign', None)
+        eligible_branches_list = set(eligible_branches_list).intersection(should_assign_list)
 
         eligible_branches_list.append(assigned_nbfc)
         eligible_branches_list = set(cached_available_balance.keys()).intersection(eligible_branches_list)

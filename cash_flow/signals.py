@@ -12,9 +12,9 @@ def create_should_check_cache(sender, instance, **kwargs):
     :return:
     """
     try:
-        should_check_branches = list(
+        should_check_branches = set(
             NBFCEligibilityCashFlowHead.objects.filter(should_check=True).values_list('nbfc_id', flat=True))
-        cache.set('should_check', should_check_branches, timeout=None)
+        cache.set('should_check', list(should_check_branches), timeout=None)
     except Exception as e:
         print(e)
 
@@ -26,8 +26,8 @@ def create_should_assign_cache(sender, instance, **kwargs):
     :return:
     """
     try:
-        should_assign_branches = list(
+        should_assign_branches = set(
             NBFCEligibilityCashFlowHead.objects.filter(should_assign=True).values_list('nbfc_id', flat=True))
-        cache.set('should_check', should_assign_branches, timeout=None)
+        cache.set('should_check', list(should_assign_branches), timeout=None)
     except Exception as e:
         print(e)
