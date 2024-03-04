@@ -233,6 +233,7 @@ class LoanDetail(CreatedUpdatedAtMixin):
     cibil_score = models.IntegerField()
     is_booked = models.BooleanField(default=False)
     disbursal_date = models.DateField(null=True)
+    age = models.IntegerField(null=True)
 
     @staticmethod
     def get_filtered_data(start_date=None, end_date=None, disbursal_date=None, status=None):
