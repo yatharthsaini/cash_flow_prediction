@@ -5,7 +5,7 @@ from django.core.cache import cache
 from cash_flow.models import NBFCEligibilityCashFlowHead
 
 
-@receiver(post_save, sender=NBFCEligibilityCashFlowHead)
+@receiver(post_save, sender=NBFCEligibilityCashFlowHead, dispatch_uid="cache_for_should_assign_and_should_check")
 def create_should_check_and_should_assign(sender, instance, **kwargs):
     """
     signal function to create cache for should check and should assign attribute and cache time =~ 10 years
