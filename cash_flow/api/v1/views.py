@@ -518,7 +518,7 @@ class BookNBFCView(APIView):
 
         eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
 
-        eligible_branches_list.append(assigned_nbfc)
+        # removing this as assigned can be assigned or not is filtered by should_assign
         eligible_branches_list = set(cached_available_balance.keys()).intersection(eligible_branches_list)
 
         updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(
