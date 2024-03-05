@@ -512,13 +512,16 @@ class BookNBFCView(APIView):
             min_loan_amount__lte=amount,
             max_loan_amount__gte=amount,
             min_age__lte=age,
-            max_age__gte=age,
-            should_assign=True
+            max_age__gte=age
         )
 
         eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
 
-        # removing this as assigned can be assigned or not is filtered by should_assign
+        should_branches_list = cache.get('should_assign', None)
+        if should_branches_list:
+            eligible_branches_list = list(set(should_branches_list) & set(eligible_branches_list))
+
+        # removing append this as assigned can be assigned or not is filtered by should_assign
         eligible_branches_list = set(cached_available_balance.keys()).intersection(eligible_branches_list)
 
         updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(
