@@ -517,8 +517,6 @@ class BookNBFCView(APIView):
         )
 
         eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
-        should_assign_list = cache.get('should_assign', None)
-        eligible_branches_list = set(eligible_branches_list).intersection(should_assign_list)
 
         eligible_branches_list.append(assigned_nbfc)
         eligible_branches_list = set(cached_available_balance.keys()).intersection(eligible_branches_list)
