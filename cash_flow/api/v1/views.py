@@ -494,7 +494,8 @@ class BookNBFCView(APIView):
 
         user_prev_loan_status = user_loan_status.status if user_loan_status else None
         cached_available_balance = cache.get('available_balance', {})
-        if assigned_nbfc:
+        should_assign_list = cache.get('should_assign_list', None)
+        if assigned_nbfc and assigned_nbfc in should_assign_list:
             available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
             if available_cash >= amount or user_loan_status:
                 self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
@@ -512,16 +513,13 @@ class BookNBFCView(APIView):
             min_loan_amount__lte=amount,
             max_loan_amount__gte=amount,
             min_age__lte=age,
-            max_age__gte=age
+            max_age__gte=age,
+            should_assign=True
         )
 
         eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
 
-        should_branches_list = cache.get('should_assign', None)
-        if should_branches_list:
-            eligible_branches_list = list(set(should_branches_list) & set(eligible_branches_list))
-
-        # removing append this as assigned can be assigned or not is filtered by should_assign
+        # removing append assigned_nbfc in the list as it should be checked using should_assign=True only
         eligible_branches_list = set(cached_available_balance.keys()).intersection(eligible_branches_list)
 
         updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(

@@ -11,7 +11,8 @@ from django.db.models import Sum, When, Case, F
 from cash_flow.external_calls import (get_due_amount_response, get_collection_poll_response, get_nbfc_list,
                                       get_collection_amount_response, get_loan_booked_data, get_failed_loan_data)
 from cash_flow.models import (NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster,
-                              CollectionAndLoanBookedData, CollectionLogs, LoanDetail, LoanBookedLogs)
+                              CollectionAndLoanBookedData, CollectionLogs, LoanDetail, LoanBookedLogs,
+                              NBFCEligibilityCashFlowHead)
 from utils.common_helper import Common
 from cash_flow_prediction.celery import celery_error_email, app
 
@@ -564,3 +565,19 @@ def run_migrate(self, password=None):
     if password != expected_password:
         raise ValueError("Invalid password")
     call_command('migrate')
+
+
+def populate_should_assign_should_check_cache():
+    """
+    celery cron to populate should assign and should check in cache
+    :return:
+    """
+    try:
+        should_check_branches = set(
+            NBFCEligibilityCashFlowHead.objects.filter(should_check=True).values_list('nbfc_id', flat=True))
+        cache.set('should_check', list(should_check_branches), timeout=172800)
+        should_assign_branches = set(
+            NBFCEligibilityCashFlowHead.objects.filter(should_assign=True).values_list('nbfc_id', flat=True))
+        cache.set('should_assign', list(should_assign_branches), timeout=172800)
+    except Exception as e:
+        print(e)
