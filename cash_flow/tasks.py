@@ -567,6 +567,8 @@ def run_migrate(self, password=None):
     call_command('migrate')
 
 
+@app.task(bind=True)
+@celery_error_email
 def populate_should_assign_should_check_cache():
     """
     celery cron to populate should assign and should check in cache
