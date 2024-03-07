@@ -433,7 +433,7 @@ class BookNBFCView(APIView):
     def post(self, request):
         payload = request.data
         assigned_nbfc = payload.get('assigned_nbfc', None)
-        should_check_list = cache.get('should_check', None)
+        should_check_list = cache.get('should_check', [])
 
         if assigned_nbfc and assigned_nbfc not in should_check_list:
             return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
@@ -495,7 +495,7 @@ class BookNBFCView(APIView):
 
         user_prev_loan_status = user_loan_status.status if user_loan_status else None
         cached_available_balance = cache.get('available_balance', {})
-        should_assign_list = cache.get('should_assign', None)
+        should_assign_list = cache.get('should_assign', [])
         if assigned_nbfc and assigned_nbfc in should_assign_list:
             available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
             if available_cash >= amount or user_loan_status:
