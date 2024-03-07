@@ -20,7 +20,7 @@ from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer, UserPer
 from cash_flow.tasks import (populate_available_cash_flow, task_for_loan_booked, populate_json_against_nbfc,
                              task_for_loan_booking, populate_wacm, run_migrate)
 from cash_flow.api.v1.authenticator import CustomAuthentication, ServerAuthentication
-from utils.common_helper import Common
+from utils.common_helper import Common, calculate_age
 
 
 class NBFCBranchView(APIView):
@@ -439,7 +439,7 @@ class BookNBFCView(APIView):
             return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
                             status=status.HTTP_200_OK)
 
-        required_fields = ['user_id', 'loan_type', 'request_type', 'cibil_score', 'credit_limit', 'age']
+        required_fields = ['user_id', 'loan_type', 'request_type', 'cibil_score', 'credit_limit', 'dob']
         for i in required_fields:
             if not payload.get(i):
                 return Response({'error': f'Invalid {i} value'}, status=status.HTTP_400_BAD_REQUEST)
@@ -449,7 +449,8 @@ class BookNBFCView(APIView):
         request_type = payload['request_type']
         cibil_score = payload['cibil_score']
         credit_limit = payload['credit_limit']
-        age = payload['age']
+        dob = payload['dob']
+        age = calculate_age(dob)
 
         loan_id = payload.get('loan_id', None)
         user_type = payload.get('user_type', 'O')
