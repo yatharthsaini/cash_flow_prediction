@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from django.db.models import Sum
 from django.db.models import Q
 from django.core.cache import cache
@@ -279,5 +279,16 @@ class Common:
         return user_ratio_value
 
 
+def calculate_age(dob):
+    """
+    :param dob: will be coming in the format of yyyy-mm-dd
+    :return: the age calculated from the dob
+    """
 
+    dob_date = datetime.strptime(dob, '%Y-%m-%d')
+    current_date = datetime.now()
 
+    age = current_date.year - dob_date.year - (
+                (current_date.month, current_date.day) < (dob_date.month, dob_date.day))
+
+    return age
