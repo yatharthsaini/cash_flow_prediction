@@ -11,7 +11,8 @@ from django.db.models import Sum, When, Case, F
 from cash_flow.external_calls import (get_due_amount_response, get_collection_poll_response, get_nbfc_list,
                                       get_collection_amount_response, get_loan_booked_data, get_failed_loan_data)
 from cash_flow.models import (NbfcWiseCollectionData, ProjectionCollectionData, NbfcBranchMaster,
-                              CollectionAndLoanBookedData, CollectionLogs, LoanDetail, LoanBookedLogs)
+                              CollectionAndLoanBookedData, CollectionLogs, LoanDetail, LoanBookedLogs,
+                              NBFCEligibilityCashFlowHead)
 from utils.common_helper import Common
 from cash_flow_prediction.celery import celery_error_email, app
 
@@ -210,7 +211,6 @@ def populate_loan_booked_amount(self):
     if loan_booked_response:
         loan_booked_data = loan_booked_response.get('data', {})
         for nbfc_id, loan_booked in loan_booked_data.items():
-
             # Try to get an existing record for the NBFC and due_date
             CollectionAndLoanBookedData.objects.update_or_create(
                 nbfc_id=nbfc_id,
@@ -352,7 +352,7 @@ def task_for_loan_booked(self, nbfc_id=None):
 @app.task(bind=True)
 @celery_error_email
 def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
-                          nbfc_id, prev_loan_status=None, is_booked=False, loan_amount=None,
+                          nbfc_id, age, prev_loan_status=None, is_booked=False, loan_amount=None,
                           loan_id=None):
     """
     helper function to book the loan with logging in models.LoanBookedLogs
@@ -371,6 +371,7 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
     :param loan_amount:
     :param nbfc_id: nbfc to be booked in the loan detail
     :param loan_id:
+    :param age:
     :return:
     """
     due_date = datetime.now().date()
@@ -388,7 +389,8 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
             'loan_id': loan_id,
             'user_type': user_type,
             'is_booked': True,
-            'status': 'I'
+            'status': 'I',
+            'age': age
         }
         loan_log = {
             'amount': credit_limit,
@@ -410,7 +412,8 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
             'amount': loan_amount,
             'user_type': user_type,
             'is_booked': True,
-            'status': 'P'
+            'status': 'P',
+            'age': age
         }
         loan_log = {
             'request_type': request_type,
@@ -427,6 +430,7 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
             'cibil_score': cibil_score,
             'credit_limit': credit_limit,
             'user_type': user_type,
+            'age': age
         }
         loan_log = {}
     user_loan = LoanDetail.objects.filter(user_id=user_id, created_at__date=due_date).exclude(status='F')
@@ -561,3 +565,21 @@ def run_migrate(self, password=None):
     if password != expected_password:
         raise ValueError("Invalid password")
     call_command('migrate')
+
+
+@app.task(bind=True)
+@celery_error_email
+def populate_should_assign_should_check_cache(self):
+    """
+    celery cron to populate should assign and should check in cache
+    :return:
+    """
+    try:
+        should_check_branches = set(
+            NBFCEligibilityCashFlowHead.objects.filter(should_check=True).values_list('nbfc_id', flat=True))
+        cache.set('should_check', list(should_check_branches), timeout=172800)
+        should_assign_branches = set(
+            NBFCEligibilityCashFlowHead.objects.filter(should_assign=True).values_list('nbfc_id', flat=True))
+        cache.set('should_assign', list(should_assign_branches), timeout=172800)
+    except Exception as e:
+        print(e)

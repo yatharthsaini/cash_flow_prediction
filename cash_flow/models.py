@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 LOAN_TYPE_CHOICES = (
         ('P', 'PAYDAY'),
@@ -206,6 +207,9 @@ class NBFCEligibilityCashFlowHead(CreatedUpdatedAtMixin):
     min_loan_amount = models.FloatField()
     max_loan_amount = models.FloatField()
     should_check = models.BooleanField(default=True)
+    should_assign = models.BooleanField(default=True)
+    min_age = models.IntegerField(null=True)
+    max_age = models.IntegerField(null=True)
 
     def __str__(self):
         return f"{self.nbfc} is the nbfc_id of the branch"
@@ -228,6 +232,7 @@ class LoanDetail(CreatedUpdatedAtMixin):
     user_type = models.CharField(max_length=1, choices=USER_TYPE_CHOICES, default='O')
     cibil_score = models.IntegerField()
     is_booked = models.BooleanField(default=False)
+    age = models.IntegerField(null=True)
 
 
 class LoanBookedLogs(CreatedUpdatedAtMixin):
