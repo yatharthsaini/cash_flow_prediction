@@ -1,3 +1,6 @@
+import json
+import os
+
 from datetime import date, timedelta, datetime
 from django.db.models import Sum
 from django.db.models import Q
@@ -292,3 +295,25 @@ def calculate_age(dob):
                 (current_date.month, current_date.day) < (dob_date.month, dob_date.day))
 
     return age
+
+
+def save_log_repsonse_for_booking_api(payload):
+    """
+    this helper function saves the log response in the log file everytime cash flow api is being hit
+    :return:
+    """
+    log_directory = "logs"
+    log_file_path = os.path.join(log_directory, "cash-flow-api-logs.txt")
+
+    # Create the logs directory if it doesn't exist
+    if not os.path.exists(log_directory):
+        os.makedirs(log_directory)
+
+    log_entry = {
+        "request_type": payload.get("request_type"),
+        "loan_id": payload.get('loan_id', None),
+        "user_id": payload.get('user_id', None)
+    }
+
+    with open(log_file_path, "a") as file:
+        file.write(json.dumps(log_entry) + "\n")
