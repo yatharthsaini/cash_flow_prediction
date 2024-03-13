@@ -352,8 +352,8 @@ def task_for_loan_booked(self, nbfc_id=None):
 @app.task(bind=True)
 @celery_error_email
 def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
-                          nbfc_id, age, prev_loan_status=None, is_booked=False, loan_amount=None,
-                          loan_id=None):
+                          nbfc_id, age, ckyc=None, ekyc=None, mkyc=None, prev_loan_status=None,
+                          is_booked=False, loan_amount=None, loan_id=None):
     """
     helper function to book the loan with logging in models.LoanBookedLogs
     we have to book the loans at the loan application level and loan applied status
@@ -372,6 +372,9 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
     :param nbfc_id: nbfc to be booked in the loan detail
     :param loan_id:
     :param age:
+    :param ckyc:
+    :param ekyc:
+    :param mkyc:
     :return:
     """
     due_date = datetime.now().date()
@@ -433,6 +436,12 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
             'age': age
         }
         loan_log = {}
+    kyc_data = {
+        'ckyc': ckyc,
+        'ekyc': ekyc,
+        'mkyc': mkyc
+    }
+    loan_data |= kyc_data
     user_loan = LoanDetail.objects.filter(user_id=user_id, created_at__date=due_date).exclude(status='F')
     if user_loan.exists():
         loan = user_loan.first()
