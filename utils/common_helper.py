@@ -304,14 +304,14 @@ def save_log_response_for_booking_api(payload):
     log_directory = "logs"
     current_time = datetime.now()
     current_date = current_time.strftime("%Y-%m-%d")
-    log_file_name = f"cash-flow-api-logs-{current_date}.txt"
+    log_file_name = f"book_nbfc-logs-{current_date}.txt"
     log_file_path = os.path.join(log_directory, log_file_name)
 
     if not os.path.exists(log_directory):
         os.makedirs(log_directory)
 
-    log_entry = (f"{current_time} ---> {payload.get('request_type', None)} ---> {payload.get('loan_id', None)} ---> "
-                 f"{payload.get('user_id', None)}")
+    log_entry = (f"current_time:{current_time} ---> request_type:{payload.get('request_type', None)} ---> "
+                 f"loan_id:{payload.get('loan_id', None)} ---> "f"user_id:{payload.get('user_id', None)}")
 
     with open(log_file_path, "a") as file:
         file.write(log_entry + "\n")
