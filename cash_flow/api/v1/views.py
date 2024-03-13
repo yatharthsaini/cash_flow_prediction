@@ -20,7 +20,7 @@ from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer, UserPer
 from cash_flow.tasks import (populate_available_cash_flow, task_for_loan_booked, populate_json_against_nbfc,
                              task_for_loan_booking, populate_wacm, run_migrate)
 from cash_flow.api.v1.authenticator import CustomAuthentication, ServerAuthentication
-from utils.common_helper import Common, calculate_age, save_log_repsonse_for_booking_api
+from utils.common_helper import Common, calculate_age, save_log_response_for_booking_api
 
 
 class NBFCBranchView(APIView):
@@ -432,7 +432,7 @@ class BookNBFCView(APIView):
 
     def post(self, request):
         payload = request.data
-        save_log_repsonse_for_booking_api(payload)
+        save_log_response_for_booking_api(payload)
         assigned_nbfc = payload.get('assigned_nbfc', None)
         should_check_list = cache.get('should_check', [])
 

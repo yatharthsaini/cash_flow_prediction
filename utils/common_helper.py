@@ -297,23 +297,21 @@ def calculate_age(dob):
     return age
 
 
-def save_log_repsonse_for_booking_api(payload):
+def save_log_response_for_booking_api(payload):
     """
-    this helper function saves the log response in the log file everytime cash flow api is being hit
-    :return:
+    This helper function saves the log response in the log file every time the cash flow API is being hit.
     """
     log_directory = "logs"
-    log_file_path = os.path.join(log_directory, "cash-flow-api-logs.txt")
+    current_time = datetime.now()
+    current_date = current_time.strftime("%Y-%m-%d")
+    log_file_name = f"cash-flow-api-logs-{current_date}.txt"
+    log_file_path = os.path.join(log_directory, log_file_name)
 
-    # Create the logs directory if it doesn't exist
     if not os.path.exists(log_directory):
         os.makedirs(log_directory)
 
-    log_entry = {
-        "request_type": payload.get("request_type"),
-        "loan_id": payload.get('loan_id', None),
-        "user_id": payload.get('user_id', None)
-    }
+    log_entry = (f"{current_time} ---> {payload.get('request_type', None)} ---> {payload.get('loan_id', None)} ---> "
+                 f"{payload.get('user_id', None)}")
 
     with open(log_file_path, "a") as file:
-        file.write(json.dumps(log_entry) + "\n")
+        file.write(log_entry + "\n")
