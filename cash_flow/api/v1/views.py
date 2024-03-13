@@ -20,7 +20,7 @@ from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer, UserPer
 from cash_flow.tasks import (populate_available_cash_flow, task_for_loan_booked, populate_json_against_nbfc,
                              task_for_loan_booking, populate_wacm, run_migrate)
 from cash_flow.api.v1.authenticator import CustomAuthentication, ServerAuthentication
-from utils.common_helper import Common, calculate_age
+from utils.common_helper import Common, calculate_age, save_log_response_for_booking_api
 
 
 class NBFCBranchView(APIView):
@@ -436,13 +436,17 @@ class BookNBFCView(APIView):
         should_check_list = cache.get('should_check', [])
 
         if assigned_nbfc and assigned_nbfc not in should_check_list:
-            return Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
+            response = Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
                             status=status.HTTP_200_OK)
+            save_log_response_for_booking_api(payload, response)
+            return response
 
         required_fields = ['user_id', 'loan_type', 'request_type', 'cibil_score', 'credit_limit', 'dob']
         for i in required_fields:
             if not payload.get(i):
-                return Response({'error': f'Invalid {i} value'}, status=status.HTTP_400_BAD_REQUEST)
+                response = Response({'error': f'Invalid {i} value'}, status=status.HTTP_400_BAD_REQUEST)
+                save_log_response_for_booking_api(payload, response)
+                return response
 
         user_id = payload['user_id']
         loan_type = payload['loan_type']
@@ -462,14 +466,18 @@ class BookNBFCView(APIView):
         if loan_id:
             loan_obj = LoanDetail.objects.filter(loan_id=loan_id, status='P').first()
             if loan_obj:
-                return Response(
+                response = Response(
                     {'message': 'The given loan is already being disbursed'},
                     status=status.HTTP_400_BAD_REQUEST)
+                save_log_response_for_booking_api(payload, response)
+                return response
 
         if assigned_nbfc == 5:
-            return Response(
+            response = Response(
                 {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc}},
                 status=status.HTTP_200_OK)
+            save_log_response_for_booking_api(payload, response)
+            return response
 
         common_instance = Common()
         assigned_nbfc, updated_nbfc_id = self.get_nbfc_for_loan_booking(
@@ -477,13 +485,17 @@ class BookNBFCView(APIView):
             due_date, common_instance, age)
 
         if assigned_nbfc == updated_nbfc_id:
-            return Response(
+            response = Response(
                 {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
                 status=status.HTTP_200_OK)
+            save_log_response_for_booking_api(payload, response)
+            return response
 
-        return Response(
+        response = Response(
             {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
             status=status.HTTP_200_OK)
+        save_log_response_for_booking_api(payload, response)
+        return response
 
     def get_nbfc_for_loan_booking(self, assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type,
                                   request_type, cibil_score, amount, due_date, common_instance, age):
