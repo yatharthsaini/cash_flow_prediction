@@ -297,7 +297,7 @@ def calculate_age(dob):
     return age
 
 
-def save_log_response_for_booking_api(payload):
+def save_log_response_for_booking_api(payload, response):
     """
     This helper function saves the log response in the log file every time the cash flow API is being hit.
     """
@@ -311,7 +311,8 @@ def save_log_response_for_booking_api(payload):
         os.makedirs(log_directory)
 
     log_entry = (f"current_time:{current_time} ---> request_type:{payload.get('request_type', None)} ---> "
-                 f"loan_id:{payload.get('loan_id', None)} ---> "f"user_id:{payload.get('user_id', None)}")
+                 f"loan_id:{payload.get('loan_id', None)} ---> "f"user_id:{payload.get('user_id', None)} ---> "
+                 f"response_data:{json.dumps(response.data)} ---> status_code:{response.status_code}")
 
     with open(log_file_path, "a") as file:
         file.write(log_entry + "\n")
