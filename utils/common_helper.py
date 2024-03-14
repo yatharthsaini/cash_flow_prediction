@@ -312,7 +312,8 @@ def save_log_response_for_booking_api(payload, response):
 
     log_entry = (f"current_time:{current_time} ---> request_type:{payload.get('request_type', None)} ---> "
                  f"loan_id:{payload.get('loan_id', None)} ---> "f"user_id:{payload.get('user_id', None)} ---> "
-                 f"response_data:{json.dumps(response.data)} ---> status_code:{response.status_code}")
+                 f"dob:{payload.get('dob', None)} ---> response_data:{json.dumps(response.data)} ---> "
+                 f"status_code:{response.status_code}")
 
     with open(log_file_path, "a") as file:
         file.write(log_entry + "\n")
