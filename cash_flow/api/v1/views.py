@@ -20,7 +20,8 @@ from cash_flow.serializers import NBFCEligibilityCashFlowHeadSerializer, UserPer
 from cash_flow.tasks import (populate_available_cash_flow, task_for_loan_booked, populate_json_against_nbfc,
                              task_for_loan_booking, populate_wacm, run_migrate)
 from cash_flow.api.v1.authenticator import CustomAuthentication, ServerAuthentication
-from utils.common_helper import Common, calculate_age, save_log_response_for_booking_api
+from utils.common_helper import (Common, calculate_age, save_log_response_for_booking_api,
+                                 fetch_file_with_date_and_request_type)
 
 
 class NBFCBranchView(APIView):
@@ -828,3 +829,21 @@ class GetLoanDetailData(APIView):
         return Response({'message': 'Success', 'url': 'data:text/csv;base64,' + base64_data})
 
 
+class GetLogFile(APIView):
+    """
+    api view that fetches the log file from the logs directory based on the date filter and
+    a non-mandatory filter as request_type
+    """
+    def get(self, request):
+        payload = request.query_params
+        date = payload.get('date', None)
+        if not date:
+            return Response({'error': 'date field is required'}, status=status.HTTP_400_BAD_REQUEST)
+        request_type = payload.get('request_type', None)
+        if request_type and request_type not in ['CL', 'LAN', 'LAD']:
+            return Response({'error': 'Invalid request type, has to be from CL, LAN or LAD'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        url = fetch_file_with_date_and_request_type(date, request_type)
+        if not url:
+            return Response({'message': 'No log file found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'url': url}, status=status.HTTP_200_OK)
