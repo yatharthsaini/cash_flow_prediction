@@ -433,9 +433,10 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
             'age': age
         }
         loan_log = {}
-    user_loan = LoanDetail.objects.filter(user_id=user_id, created_at__date=due_date).exclude(status='F')
+    user_loan = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id,  created_at__date=due_date).exclude(status='F')
     if user_loan.exists():
         loan = user_loan.first()
+        LoanDetail.objects.update_or_create(id=loan.id, defaults=loan_data)
         for i in loan_data:
             setattr(loan, i, loan_data[i])
         loan.save()

@@ -1,5 +1,7 @@
 import json
 import os
+import base64
+import glob
 
 from datetime import date, timedelta, datetime
 from django.db.models import Sum
@@ -312,7 +314,36 @@ def save_log_response_for_booking_api(payload, response):
 
     log_entry = (f"current_time:{current_time} ---> request_type:{payload.get('request_type', None)} ---> "
                  f"loan_id:{payload.get('loan_id', None)} ---> "f"user_id:{payload.get('user_id', None)} ---> "
-                 f"response_data:{json.dumps(response.data)} ---> status_code:{response.status_code}")
+                 f"dob:{payload.get('dob', None)} ---> response_data:{json.dumps(response.data)} ---> "
+                 f"status_code:{response.status_code}")
 
     with open(log_file_path, "a") as file:
         file.write(log_entry + "\n")
+
+
+def fetch_file_with_date_and_request_type(date, request_type=None):
+    if isinstance(date, str):
+        date = datetime.strptime(date, "%Y-%m-%d")
+    logs_dir = "logs"
+    file_pattern = os.path.join(logs_dir, f'*{date.strftime("%Y-%m-%d")}*')
+
+    matching_files = glob.glob(file_pattern)
+
+    if matching_files:
+        file_path = matching_files[0]
+        # Open the file
+        with open(file_path, 'r') as file:
+            if request_type:
+                # Filter lines only if request_type is provided
+                filtered_lines = [line.strip() for line in file if f'request_type:{request_type}' in line]
+            else:
+                # If request_type is None, include all lines
+                filtered_lines = [line.strip() for line in file]
+
+        filtered_contents = '\n'.join(filtered_lines)
+
+        base64_contents = base64.b64encode(filtered_contents.encode('utf-8')).decode('utf-8')
+        data_url = f'data:text/plain;base64,{base64_contents}'
+        return data_url
+    else:
+        return None
