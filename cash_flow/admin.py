@@ -29,7 +29,7 @@ admin.site.register(CollectionAndLoanBookedData, CollectionAndLoanBookedDataAdmi
 class LoanDetailAdmin(admin.ModelAdmin):
     model = LoanDetail
     search_fields = ['nbfc', 'user_id', 'status', 'credit_limit', 'user_type']
-    list_display = ['id', 'loan_id', 'loan_type', 'nbfc', 'user_id', 'credit_limit', 'status', 'user_type', 'age', 'created_at', 'updated_at']
+    list_display = ['id', 'loan_id', 'loan_type', 'nbfc', 'user_id', 'credit_limit', 'amount', 'status', 'user_type', 'age', 'created_at', 'updated_at']
     list_filter = ['nbfc', 'status', 'user_type', 'created_at', 'updated_at']
 
 
