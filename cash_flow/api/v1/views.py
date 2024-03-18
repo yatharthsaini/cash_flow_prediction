@@ -461,7 +461,7 @@ class BookNBFCView(APIView):
         user_type = payload.get('user_type', 'O')
         due_date = datetime.now().date()
 
-        amount = payload.get('amount', credit_limit)
+        amount = float(payload.get('amount', credit_limit))
         amount = amount if request_type == 'LAD' else credit_limit
 
         if loan_id:
