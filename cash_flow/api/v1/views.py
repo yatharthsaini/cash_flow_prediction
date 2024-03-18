@@ -452,7 +452,7 @@ class BookNBFCView(APIView):
         user_id = payload['user_id']
         loan_type = payload['loan_type']
         request_type = payload['request_type']
-        cibil_score = float(payload['cibil_score'])
+        cibil_score = int(payload['cibil_score'])
         credit_limit = payload['credit_limit']
         dob = payload['dob']
         age = calculate_age(dob)
