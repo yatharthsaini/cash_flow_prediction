@@ -306,7 +306,10 @@ ADMINS = [
     ("Dheeraj", "dheeraj.thakur@paymeindia.in"),
 ]
 
-if ENVIRONMENT == "PRODUCTION":
+ENABLE_SENTRY = os.environ.get('ENABLE_SENTRY')
+ENABLE_APM = os.environ.get('ENABLE_APM')
+
+if ENVIRONMENT == "PRODUCTION" and ENABLE_APM:
     INSTALLED_APPS += ["elasticapm.contrib.django"]
     ELASTIC_APM = {
         "SERVICE_NAME": os.environ.get("APM_HOSTNAME"),
@@ -321,6 +324,7 @@ if ENVIRONMENT == "PRODUCTION":
 
     TEMPLATES[0]["OPTIONS"]["context_processors"] += ["elasticapm.contrib.django.context_processors.rum_tracing"]
 
+if ENVIRONMENT == "PRODUCTION" and ENABLE_SENTRY:
     sentry_sdk.init(
         dsn="https://2292ef407492fc6717b9150e75e7cd68@o556520.ingest.sentry.io/4506624720764928",
         # Set traces_sample_rate to 1.0 to capture 100%
