@@ -510,14 +510,6 @@ class BookNBFCView(APIView):
 
         user_prev_loan_status = user_loan_status.status if user_loan_status else None
         cached_available_balance = cache.get('available_balance', {})
-        should_assign_list = cache.get('should_assign', [])
-        if assigned_nbfc and assigned_nbfc in should_assign_list:
-            available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
-            if available_cash >= amount or user_loan_status:
-                self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status,
-                                           age, ckyc, ekyc, mkyc)
-                return assigned_nbfc, assigned_nbfc
 
         tenure_days = int(loan_type[1:]) if loan_type.startswith('E') else 45
         eligibility_loan_type = 'E' if loan_type != 'P' else 'P'
@@ -540,6 +532,13 @@ class BookNBFCView(APIView):
 
         # removing append assigned_nbfc in the list as it should be checked using should_assign=True only
         eligible_branches_list = set(cached_available_balance.keys()).intersection(eligible_branches_list)
+        if assigned_nbfc and assigned_nbfc in eligible_branches_list:
+            available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
+            if available_cash >= amount or user_loan_status:
+                self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
+                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status,
+                                           age, ckyc, ekyc, mkyc)
+                return assigned_nbfc, assigned_nbfc
 
         updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(
             branches_list=eligible_branches_list,
