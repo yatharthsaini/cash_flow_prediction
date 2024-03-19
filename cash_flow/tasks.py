@@ -267,7 +267,7 @@ def populate_available_cash_flow(self, nbfc=None):
 
     prediction_amount_value = dict(ProjectionCollectionData.objects.filter(
         **filtered_dict,
-        created_at__date=due_date).values('nbfc_id').order_by('nbfc_id').annotate(
+        collection_date=due_date).values('nbfc_id').order_by('nbfc_id').annotate(
         total_amount=Sum('amount')
     ).values_list('nbfc_id', 'total_amount'))
 
