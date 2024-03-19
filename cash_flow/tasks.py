@@ -267,7 +267,7 @@ def populate_available_cash_flow(self, nbfc=None):
 
     prediction_amount_value = dict(ProjectionCollectionData.objects.filter(
         **filtered_dict,
-        collection_date=due_date).values('nbfc_id').order_by('nbfc_id').annotate(
+        created_at__date=due_date).values('nbfc_id').order_by('nbfc_id').annotate(
         total_amount=Sum('amount')
     ).values_list('nbfc_id', 'total_amount'))
 
@@ -352,7 +352,7 @@ def task_for_loan_booked(self, nbfc_id=None):
 @app.task(bind=True)
 @celery_error_email
 def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, user_type, cibil_score,
-                          nbfc_id, age, ckyc=None, ekyc=None, mkyc=None, prev_loan_status=None,
+                          nbfc_id, age, ckyc=False, ekyc=False, mkyc=False, prev_loan_status=False,
                           is_booked=False, loan_amount=None, loan_id=None):
     """
     helper function to book the loan with logging in models.LoanBookedLogs
