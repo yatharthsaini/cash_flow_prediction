@@ -464,7 +464,7 @@ class BookNBFCView(APIView):
         mkyc = request_type('mkyc', False)
         kyc_fields = ['ckyc', 'ekyc', 'mkyc']
         for field in kyc_fields:
-            if type(field) != bool:
+            if not isinstance(field, bool):
                 response = Response({'error': f'Invalid {field} value'}, status=status.HTTP_400_BAD_REQUEST)
                 save_log_response_for_booking_api(payload, response)
                 return response
