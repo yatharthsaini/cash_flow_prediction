@@ -466,7 +466,7 @@ class BookNBFCView(APIView):
         for i in kyc_fields:
             field = payload.get(i)
             if not isinstance(field, bool):
-                response = Response({'error': f'Invalid {field} value'}, status=status.HTTP_400_BAD_REQUEST)
+                response = Response({'error': f'Invalid {i} value'}, status=status.HTTP_400_BAD_REQUEST)
                 save_log_response_for_booking_api(payload, response)
                 return response
 
