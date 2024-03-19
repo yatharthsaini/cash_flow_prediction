@@ -326,10 +326,7 @@ def create_kyc_filter(ckyc=False, ekyc=False, mkyc=False) -> Q:
     :return: a filter
     """
     kyc_filter = Q()
-    if ckyc is True:
-        kyc_filter |= Q(ckyc=True)
-    if ekyc is True:
-        kyc_filter |= Q(ekyc=True)
-    if mkyc is True:
-        kyc_filter |= Q(mkyc=True)
+    kyc_filter |= Q(ckyc=True) if ckyc is True else Q(ckyc=None)
+    kyc_filter |= Q(ekyc=True) if ekyc is True else Q(ekyc=None)
+    kyc_filter |= Q(mkyc=True) if mkyc is True else Q(mkyc=None)
     return kyc_filter
