@@ -318,11 +318,11 @@ def save_log_response_for_booking_api(payload, response):
         file.write(log_entry + "\n")
 
 
-def create_kyc_filter(ckyc=None, ekyc=None, mkyc=None) -> Q:
+def create_kyc_filter(ckyc=False, ekyc=False, mkyc=False) -> Q:
     """
-    :param ckyc: true/ false/none
-    :param ekyc: true/false/none
-    :param mkyc: true/false/none
+    :param ckyc: true/ false
+    :param ekyc: true/false
+    :param mkyc: true/false
     :return: a filter
     """
     kyc_filter = Q()

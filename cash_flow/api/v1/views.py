@@ -459,9 +459,9 @@ class BookNBFCView(APIView):
         loan_id = payload.get('loan_id', None)
         user_type = payload.get('user_type', 'O')
         due_date = datetime.now().date()
-        ckyc = request_type('ckyc', None)
-        ekyc = request_type('ekyc', None)
-        mkyc = request_type('mkyc', None)
+        ckyc = request_type('ckyc', False)
+        ekyc = request_type('ekyc', False)
+        mkyc = request_type('mkyc', False)
 
         amount = payload.get('amount', credit_limit)
         amount = amount if request_type == 'LAD' else credit_limit
