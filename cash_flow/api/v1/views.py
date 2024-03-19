@@ -437,7 +437,7 @@ class BookNBFCView(APIView):
 
         if assigned_nbfc and assigned_nbfc not in should_check_list:
             response = Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
-                            status=status.HTTP_200_OK)
+                                status=status.HTTP_200_OK)
             save_log_response_for_booking_api(payload, response)
             return response
 
@@ -462,6 +462,12 @@ class BookNBFCView(APIView):
         ckyc = request_type('ckyc', False)
         ekyc = request_type('ekyc', False)
         mkyc = request_type('mkyc', False)
+        kyc_fields = ['ckyc', 'ekyc', 'mkyc']
+        for field in kyc_fields:
+            if type(field) != bool:
+                response = Response({'error': f'Invalid {field} value'}, status=status.HTTP_400_BAD_REQUEST)
+                save_log_response_for_booking_api(payload, response)
+                return response
 
         amount = payload.get('amount', credit_limit)
         amount = amount if request_type == 'LAD' else credit_limit
@@ -835,5 +841,3 @@ class GetLoanDetailData(APIView):
         base64_data = base64.b64encode(csv_bytes).decode('utf-8')
 
         return Response({'message': 'Success', 'url': 'data:text/csv;base64,' + base64_data})
-
-
