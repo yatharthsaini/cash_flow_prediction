@@ -452,7 +452,9 @@ class BookNBFCView(APIView):
         user_id = payload['user_id']
         loan_type = payload['loan_type']
         request_type = payload['request_type']
-        cibil_score = int(payload['cibil_score'])
+        cibil_score = payload['cibil_score']
+        cibil_score = int(cibil_score) if cibil_score else None
+
         credit_limit = payload['credit_limit']
         dob = payload['dob']
         age = calculate_age(dob)
@@ -461,7 +463,9 @@ class BookNBFCView(APIView):
         user_type = payload.get('user_type', 'O')
         due_date = datetime.now().date()
 
-        amount = float(payload.get('amount', credit_limit))
+        amount = payload.get('amount', credit_limit)
+        amount = float(amount) if amount else None
+
         amount = amount if request_type == 'LAD' else credit_limit
 
         if loan_id:
