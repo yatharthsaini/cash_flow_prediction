@@ -459,9 +459,9 @@ class BookNBFCView(APIView):
         loan_id = payload.get('loan_id', None)
         user_type = payload.get('user_type', 'O')
         due_date = datetime.now().date()
-        ckyc = request_type('ckyc', False)
-        ekyc = request_type('ekyc', False)
-        mkyc = request_type('mkyc', False)
+        ckyc = payload.get('ckyc', False)
+        ekyc = payload.get('ekyc', False)
+        mkyc = payload.get('mkyc', False)
         kyc_fields = ['ckyc', 'ekyc', 'mkyc']
         for field in kyc_fields:
             if not isinstance(field, bool):
