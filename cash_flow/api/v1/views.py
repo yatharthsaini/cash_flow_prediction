@@ -24,6 +24,7 @@ from utils.common_helper import (Common, calculate_age, save_log_response_for_bo
                                  fetch_file_with_date_and_request_type, create_kyc_filter)
 
 
+
 class NBFCBranchView(APIView):
     authentication_classes = [CustomAuthentication]
 
@@ -455,6 +456,7 @@ class BookNBFCView(APIView):
         cibil_score = payload['cibil_score']
         cibil_score = int(cibil_score) if cibil_score else None
 
+
         credit_limit = payload['credit_limit']
         dob = payload['dob']
         age = calculate_age(dob)
@@ -475,6 +477,7 @@ class BookNBFCView(APIView):
 
         amount = payload.get('amount', credit_limit)
         amount = float(amount) if amount else None
+
 
         amount = amount if request_type == 'LAD' else credit_limit
 
