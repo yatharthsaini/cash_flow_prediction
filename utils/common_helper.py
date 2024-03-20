@@ -347,3 +347,17 @@ def fetch_file_with_date_and_request_type(date, request_type=None):
         return data_url
     else:
         return None
+
+
+def create_kyc_filter(ckyc=False, ekyc=False, mkyc=False) -> Q:
+    """
+    :param ckyc: true/ false
+    :param ekyc: true/false
+    :param mkyc: true/false
+    :return: a filter
+    """
+    kyc_filter = Q()
+    kyc_filter |= Q(ckyc=True) if ckyc is True else Q(ckyc=None)
+    kyc_filter |= Q(ekyc=True) if ekyc is True else Q(ekyc=None)
+    kyc_filter |= Q(mkyc=True) if mkyc is True else Q(mkyc=None)
+    return kyc_filter

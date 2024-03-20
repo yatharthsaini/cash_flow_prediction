@@ -21,7 +21,7 @@ from cash_flow.tasks import (populate_available_cash_flow, task_for_loan_booked,
                              task_for_loan_booking, populate_wacm, run_migrate)
 from cash_flow.api.v1.authenticator import CustomAuthentication, ServerAuthentication
 from utils.common_helper import (Common, calculate_age, save_log_response_for_booking_api,
-                                 fetch_file_with_date_and_request_type)
+                                 fetch_file_with_date_and_request_type, create_kyc_filter)
 
 
 class NBFCBranchView(APIView):
@@ -438,7 +438,7 @@ class BookNBFCView(APIView):
 
         if assigned_nbfc and assigned_nbfc not in should_check_list:
             response = Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
-                            status=status.HTTP_200_OK)
+                                status=status.HTTP_200_OK)
             save_log_response_for_booking_api(payload, response)
             return response
 
@@ -462,6 +462,16 @@ class BookNBFCView(APIView):
         loan_id = payload.get('loan_id', None)
         user_type = payload.get('user_type', 'O')
         due_date = datetime.now().date()
+        ckyc = payload.get('ckyc', False)
+        ekyc = payload.get('ekyc', False)
+        mkyc = payload.get('mkyc', False)
+        kyc_fields = ['ckyc', 'ekyc', 'mkyc']
+        for i in kyc_fields:
+            field = payload.get(i)
+            if not isinstance(field, bool):
+                response = Response({'error': f'Invalid {i} value'}, status=status.HTTP_400_BAD_REQUEST)
+                save_log_response_for_booking_api(payload, response)
+                return response
 
         amount = payload.get('amount', credit_limit)
         amount = float(amount) if amount else None
@@ -487,7 +497,7 @@ class BookNBFCView(APIView):
         common_instance = Common()
         assigned_nbfc, updated_nbfc_id = self.get_nbfc_for_loan_booking(
             assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
-            due_date, common_instance, age)
+            due_date, common_instance, age, ckyc, ekyc, mkyc)
 
         if assigned_nbfc == updated_nbfc_id:
             response = Response(
@@ -503,7 +513,7 @@ class BookNBFCView(APIView):
         return response
 
     def get_nbfc_for_loan_booking(self, assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type,
-                                  request_type, cibil_score, amount, due_date, common_instance, age):
+                                  request_type, cibil_score, amount, due_date, common_instance, age, ckyc, ekyc, mkyc):
         today = datetime.now().date()
         user_loan_status = LoanDetail.objects.filter(user_id=user_id, loan_id=loan_id, updated_at__date=today,
                                                      is_booked=True).first()
@@ -516,7 +526,9 @@ class BookNBFCView(APIView):
         tenure_days = int(loan_type[1:]) if loan_type.startswith('E') else 45
         eligibility_loan_type = 'E' if loan_type != 'P' else 'P'
 
+        kyc_filter = create_kyc_filter(ckyc, ekyc, mkyc)
         eligibility_queryset = NBFCEligibilityCashFlowHead.objects.filter(
+            kyc_filter,
             loan_type=eligibility_loan_type,
             min_cibil_score__lte=cibil_score,
             min_loan_tenure__lte=tenure_days,
@@ -527,16 +539,17 @@ class BookNBFCView(APIView):
             max_age__gte=age,
             should_assign=True
         )
+
         eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
 
         # removing append assigned_nbfc in the list as it should be checked using should_assign=True only
         eligible_branches_list = set(cached_available_balance.keys()).intersection(eligible_branches_list)
-
         if assigned_nbfc and assigned_nbfc in eligible_branches_list:
             available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
             if available_cash >= amount or user_loan_status:
                 self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status, age)
+                                           assigned_nbfc, loan_id, user_prev_loan_status, amount, user_loan_status,
+                                           age, ckyc, ekyc, mkyc)
                 return assigned_nbfc, assigned_nbfc
 
         updated_nbfc_id = common_instance.get_nbfc_for_loan_to_be_booked(
@@ -547,12 +560,13 @@ class BookNBFCView(APIView):
 
         if updated_nbfc_id:
             self.task_for_loan_booking(credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                                       updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_loan_status, age)
+                                       updated_nbfc_id, loan_id, user_prev_loan_status, amount, user_loan_status,
+                                       age, ckyc, ekyc, mkyc)
 
         return assigned_nbfc, updated_nbfc_id
 
     def task_for_loan_booking(self, credit_limit, user_type, loan_type, user_id, request_type, cibil_score,
-                              nbfc_id, loan_id, prev_loan_status, loan_amount, is_booked, age):
+                              nbfc_id, loan_id, prev_loan_status, loan_amount, is_booked, age, ckyc, ekyc, mkyc):
         task_for_loan_booking(
             credit_limit=credit_limit,
             user_type=user_type,
@@ -565,7 +579,10 @@ class BookNBFCView(APIView):
             prev_loan_status=prev_loan_status,
             loan_amount=loan_amount,
             is_booked=is_booked,
-            age=age
+            age=age,
+            ckyc=ckyc,
+            ekyc=ekyc,
+            mkyc=mkyc
         )
 
 

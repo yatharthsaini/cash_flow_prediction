@@ -8,7 +8,7 @@ class NBFCEligibilityAdmin(admin.ModelAdmin):
     model = NBFCEligibilityCashFlowHead
     search_fields = ['nbfc']
     list_display = ['nbfc', 'loan_type', 'min_cibil_score', 'min_loan_tenure', 'max_loan_tenure', 'min_loan_amount',
-                    'max_loan_amount', 'min_age', 'max_age', 'should_check', 'should_assign']
+                    'max_loan_amount', 'min_age', 'max_age', 'ckyc', 'ekyc', 'mkyc', 'should_check', 'should_assign']
     list_filter = ['loan_type']
 
 
@@ -29,7 +29,9 @@ admin.site.register(CollectionAndLoanBookedData, CollectionAndLoanBookedDataAdmi
 class LoanDetailAdmin(admin.ModelAdmin):
     model = LoanDetail
     search_fields = ['nbfc', 'user_id', 'status', 'credit_limit', 'user_type']
-    list_display = ['id', 'loan_id', 'loan_type', 'nbfc', 'user_id', 'credit_limit', 'cibil_score', 'amount', 'status', 'user_type', 'age', 'created_at', 'updated_at']
+    list_display = ['id', 'loan_id', 'loan_type', 'nbfc', 'user_id', 'credit_limit', 'status', 'user_type', 'age',
+                    'ckyc', 'ekyc', 'mkyc', 'created_at', 'updated_at']
+
     list_filter = ['nbfc', 'status', 'user_type', 'created_at', 'updated_at']
 
 

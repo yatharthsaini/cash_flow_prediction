@@ -210,6 +210,9 @@ class NBFCEligibilityCashFlowHead(CreatedUpdatedAtMixin):
     should_assign = models.BooleanField(default=True)
     min_age = models.IntegerField(null=True)
     max_age = models.IntegerField(null=True)
+    ckyc = models.BooleanField(default=False)
+    ekyc = models.BooleanField(default=False)
+    mkyc = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.nbfc} is the nbfc_id of the branch"
@@ -233,6 +236,9 @@ class LoanDetail(CreatedUpdatedAtMixin):
     cibil_score = models.IntegerField()
     is_booked = models.BooleanField(default=False)
     age = models.IntegerField(null=True)
+    ckyc = models.BooleanField(default=False)
+    ekyc = models.BooleanField(default=False)
+    mkyc = models.BooleanField(default=False)
 
 
 class LoanBookedLogs(CreatedUpdatedAtMixin):
