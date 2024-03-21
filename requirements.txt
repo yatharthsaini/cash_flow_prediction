@@ -3,7 +3,7 @@ boto3
 celery
 django-celery-beat
 django-celery-results
-Django
+Django==4.2.11
 django_smtp_ssl
 django-redis
 django-cors-headers
