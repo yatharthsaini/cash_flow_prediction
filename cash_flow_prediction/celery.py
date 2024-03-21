@@ -14,14 +14,14 @@ from django.conf import settings
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cash_flow_prediction.settings')
 
-app = Celery('cash_flow_prediction', timezone='Asia/Kolkata')
+app = Celery('cash_flow_prediction')
 
 BASE_REDIS_URL = os.environ.get('REDIS_URL')
 
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # celery.py or settings.py or wherever you set Celery settings
-app.conf.broker_connection_retry_on_startup = True
+#app.conf.broker_connection_retry_on_startup = True
 
 # Load task modules from all registered Django apps.
 app.autodiscover_tasks()
