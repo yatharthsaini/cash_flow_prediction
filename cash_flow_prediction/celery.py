@@ -14,7 +14,7 @@ from django.conf import settings
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'cash_flow_prediction.settings')
 
-app = Celery('cash_flow_prediction')
+app = Celery('cash_flow_prediction', timezone='Asia/Kolkata')
 
 BASE_REDIS_URL = os.environ.get('REDIS_URL')
 
