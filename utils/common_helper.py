@@ -201,7 +201,7 @@ class Common:
 
         or_ratio = {
             i: (available_credit_line[i][user_type] + sanctioned_amount)/available_credit_line[i][user_type]
-            for i in available_credit_line
+            for i in branches_list
         }
         or_ratio = dict(sorted(or_ratio.items(), key=lambda items: items[1]))
 
@@ -312,10 +312,15 @@ def save_log_response_for_booking_api(payload, response):
     if not os.path.exists(log_directory):
         os.makedirs(log_directory)
 
+    kyc_data = {
+        'ckyc': payload.get('ckyc'),
+        'ekyc': payload.get('ekyc'),
+        'mkyc': payload.get('mkyc')
+    }
     log_entry = (f"current_time:{current_time} ---> request_type:{payload.get('request_type', None)} ---> "
                  f"loan_id:{payload.get('loan_id', None)} ---> "f"user_id:{payload.get('user_id', None)} ---> "
-                 f"dob:{payload.get('dob', None)} ---> response_data:{json.dumps(response.data)} ---> "
-                 f"status_code:{response.status_code}")
+                 f"dob:{payload.get('dob', None)} ---> kyc_data:{json.dumps(kyc_data)} ---> "
+                 f"response_data:{json.dumps(response.data)} ---> "f"status_code:{response.status_code}")
 
     with open(log_file_path, "a") as file:
         file.write(log_entry + "\n")
