@@ -437,7 +437,8 @@ class BookNBFCView(APIView):
         should_check_list = cache.get('should_check', [])
 
         if assigned_nbfc and assigned_nbfc not in should_check_list:
-            response = Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
+            response = Response({'message': 'no change in nbfc because assigned_nbfc not present in should check '
+                                            'cache', 'assigned_nbfc': assigned_nbfc},
                                 status=status.HTTP_200_OK)
             save_log_response_for_booking_api(payload, response)
             return response
@@ -482,14 +483,15 @@ class BookNBFCView(APIView):
             loan_obj = LoanDetail.objects.filter(loan_id=loan_id, status='P').first()
             if loan_obj:
                 response = Response(
-                    {'message': 'The given loan is already being disbursed'},
+                    {'message': 'The given loan is already being disbursed',  'assigned_nbfc': assigned_nbfc},
                     status=status.HTTP_400_BAD_REQUEST)
                 save_log_response_for_booking_api(payload, response)
                 return response
 
         if assigned_nbfc == 5:
             response = Response(
-                {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc}},
+                {'message': 'Nbfc is not changed as the assigned_nbfc is the test nbfc',
+                 'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc}},
                 status=status.HTTP_200_OK)
             save_log_response_for_booking_api(payload, response)
             return response
@@ -499,15 +501,25 @@ class BookNBFCView(APIView):
             assigned_nbfc, user_id, loan_id, user_type, credit_limit, loan_type, request_type, cibil_score, amount,
             due_date, common_instance, age, ckyc, ekyc, mkyc)
 
+        if not updated_nbfc_id:
+            response = Response(
+                {'message': 'user does not fulfil any nbfc requirement',
+                 'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
+                status=status.HTTP_406_NOT_ACCEPTABLE)
+
+            save_log_response_for_booking_api(payload, response)
+            return response
         if assigned_nbfc == updated_nbfc_id:
             response = Response(
-                {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
+                {'message': 'No change in nbfc ',
+                 'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
                 status=status.HTTP_200_OK)
             save_log_response_for_booking_api(payload, response)
             return response
 
         response = Response(
-            {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
+            {'message': 'Nbfc is updated',
+                'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
             status=status.HTTP_200_OK)
         save_log_response_for_booking_api(payload, response)
         return response
@@ -521,7 +533,6 @@ class BookNBFCView(APIView):
         # assigned_nbfc line should be removed when we go live in productivity
 
         user_prev_loan_status = user_loan_status.status if user_loan_status else None
-        cached_available_balance = cache.get('available_balance', {})
 
         tenure_days = int(loan_type[1:]) if loan_type.startswith('E') else 45
         eligibility_loan_type = 'E' if loan_type != 'P' else 'P'
@@ -541,9 +552,13 @@ class BookNBFCView(APIView):
         )
 
         eligible_branches_list = list(eligibility_queryset.values_list('nbfc', flat=True))
+        if not eligible_branches_list:
+            return assigned_nbfc, None
 
         # removing append assigned_nbfc in the list as it should be checked using should_assign=True only
+        cached_available_balance = cache.get('available_balance', {})
         eligible_branches_list = set(cached_available_balance.keys()).intersection(eligible_branches_list)
+
         if assigned_nbfc and assigned_nbfc in eligible_branches_list:
             available_cash = cached_available_balance.get(assigned_nbfc, {}).get(user_type, 0)
             if available_cash >= amount or user_loan_status:
