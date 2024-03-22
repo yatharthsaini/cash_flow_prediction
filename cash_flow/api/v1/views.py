@@ -437,7 +437,8 @@ class BookNBFCView(APIView):
         should_check_list = cache.get('should_check', [])
 
         if assigned_nbfc and assigned_nbfc not in should_check_list:
-            response = Response({'message': 'no change in nbfc', 'assigned_nbfc': assigned_nbfc},
+            response = Response({'message': 'no change in nbfc because assigned_nbfc not present in should check '
+                                            'cache', 'assigned_nbfc': assigned_nbfc},
                                 status=status.HTTP_200_OK)
             save_log_response_for_booking_api(payload, response)
             return response
@@ -482,14 +483,15 @@ class BookNBFCView(APIView):
             loan_obj = LoanDetail.objects.filter(loan_id=loan_id, status='P').first()
             if loan_obj:
                 response = Response(
-                    {'message': 'The given loan is already being disbursed'},
+                    {'message': 'The given loan is already being disbursed',  'assigned_nbfc': assigned_nbfc},
                     status=status.HTTP_400_BAD_REQUEST)
                 save_log_response_for_booking_api(payload, response)
                 return response
 
         if assigned_nbfc == 5:
             response = Response(
-                {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc}},
+                {'message': 'Nbfc is not changed as the assigned_nbfc is the test nbfc',
+                 'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc}},
                 status=status.HTTP_200_OK)
             save_log_response_for_booking_api(payload, response)
             return response
@@ -501,13 +503,15 @@ class BookNBFCView(APIView):
 
         if assigned_nbfc == updated_nbfc_id:
             response = Response(
-                {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
+                {'message': 'No change in nbfc ',
+                 'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
                 status=status.HTTP_200_OK)
             save_log_response_for_booking_api(payload, response)
             return response
 
         response = Response(
-            {'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
+            {'message': 'Nbfc is updated',
+                'data': {'user_id': user_id, 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': updated_nbfc_id}},
             status=status.HTTP_200_OK)
         save_log_response_for_booking_api(payload, response)
         return response
