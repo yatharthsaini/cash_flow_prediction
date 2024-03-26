@@ -588,7 +588,14 @@ def populate_should_assign_should_check_cache(self):
     try:
         should_check_branches = set(
             NBFCEligibilityCashFlowHead.objects.filter(should_check=True).values_list('nbfc_id', flat=True))
-        cache.set('should_check', list(should_check_branches), timeout=172800)
+        should_check_list = list(should_check_branches)
+        branch_list = list(NbfcBranchMaster.objects.filter(is_enable=True).values_list('id', flat=True))
+        blocked_check_list = list(set(
+            NBFCEligibilityCashFlowHead.objects.filter(should_check=False).values_list('nbfc_id', flat=True)))
+        for branch in branch_list:
+            if branch not in should_check_list and branch not in blocked_check_list:
+                should_check_list.append(branch)
+        cache.set('should_check', should_check_list, timeout=172800)
         should_assign_branches = set(
             NBFCEligibilityCashFlowHead.objects.filter(should_assign=True).values_list('nbfc_id', flat=True))
         cache.set('should_assign', list(should_assign_branches), timeout=172800)
