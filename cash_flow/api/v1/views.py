@@ -438,8 +438,8 @@ class BookNBFCView(APIView):
 
         if assigned_nbfc and assigned_nbfc not in should_check_list:
             response = Response({'message': 'no change in nbfc because assigned_nbfc not present in should check '
-                                            'cache', 'assigned_nbfc': assigned_nbfc},
-                                status=status.HTTP_200_OK)
+                                            'cache', 'assigned_nbfc': assigned_nbfc, 'updated_nbfc': assigned_nbfc},
+                                status=status.HTTP_406_NOT_ACCEPTABLE)
             save_log_response_for_booking_api(payload, response)
             return response
 
@@ -483,7 +483,8 @@ class BookNBFCView(APIView):
             loan_obj = LoanDetail.objects.filter(loan_id=loan_id, status='P').first()
             if loan_obj:
                 response = Response(
-                    {'message': 'The given loan is already being disbursed',  'assigned_nbfc': assigned_nbfc},
+                    {'message': 'The given loan is already being disbursed',  'assigned_nbfc': assigned_nbfc,
+                     'updated_nbfc': assigned_nbfc},
                     status=status.HTTP_400_BAD_REQUEST)
                 save_log_response_for_booking_api(payload, response)
                 return response
