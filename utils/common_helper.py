@@ -144,7 +144,7 @@ class Common:
         """
         variance = 0
         if predicted_cash_inflow != 0:
-            variance = ((predicted_cash_inflow - collection) / predicted_cash_inflow) / 100
+            variance = ((predicted_cash_inflow - collection) / predicted_cash_inflow) * 100
         return variance
 
     @staticmethod
