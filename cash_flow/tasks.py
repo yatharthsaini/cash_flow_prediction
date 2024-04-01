@@ -75,11 +75,12 @@ def populate_wacm(self, due_date=None):
         return
     if projection_response_data:
         projection_response_data = projection_response_data.get('data', {})
+
+    if 'null' in projection_response_data:
+        projection_response_data.pop('null', None)
+
     nbfc_list = list(projection_response_data.keys())
-    nbfc_ids = NbfcBranchMaster.objects.filter(id__in=nbfc_list).order_by('created_at')
-    nbfc_ids = dict(nbfc_ids.values_list('branch_name', 'id'))
-    nbfc_ids_list = list(nbfc_ids.values())
-    queryset = NbfcWiseCollectionData.objects.filter(nbfc_id__in=nbfc_ids_list, due_date=due_date).order_by(
+    queryset = NbfcWiseCollectionData.objects.filter(nbfc_id__in=nbfc_list, due_date=due_date).order_by(
         'created_at')
     queryset = dict((str(nbfc_id), collection_json) for nbfc_id, collection_json in
                     queryset.values_list('nbfc_id', 'collection_json'))
@@ -149,14 +150,15 @@ def populate_nbfc_branch_master(self):
 
 @app.task(bind=True)
 @celery_error_email
-def populate_collection_amount(self):
+def populate_collection_amount(self, due_date=None):
     """
     celery task to populate the collection amount in models.CollectionAndLoanBookedData
     for a nbfc's for a particular due_date
     the celery task would also log the changes into the models.CollectionLogs for every change pre
     celery task and post celery task collection amount
     """
-    due_date = datetime.now().date()
+    if not due_date:
+        due_date = datetime.now().date()
     str_due_date = due_date.strftime('%Y-%m-%d')
     try:
         collection_amount_response = get_collection_amount_response(str_due_date).json()
@@ -197,12 +199,13 @@ def populate_collection_amount(self):
 
 @app.task(bind=True)
 @celery_error_email
-def populate_loan_booked_amount(self):
+def populate_loan_booked_amount(self, due_date=None):
     """
     celery task to populate the loan_booked amount in models.CCollectionAndLoanBookedData
     for a nbfc's for a particular due_date
     """
-    due_date = datetime.now().date()
+    if not due_date:
+        due_date = datetime.now().date()
     str_due_date = due_date.strftime('%Y-%m-%d')
     try:
         loan_booked_response = get_loan_booked_data(str_due_date).json()
@@ -211,6 +214,8 @@ def populate_loan_booked_amount(self):
     if loan_booked_response:
         loan_booked_data = loan_booked_response.get('data', {})
         for nbfc_id, loan_booked in loan_booked_data.items():
+            if nbfc_id == '5':
+                continue
             # Try to get an existing record for the NBFC and due_date
             CollectionAndLoanBookedData.objects.update_or_create(
                 nbfc_id=nbfc_id,
@@ -253,7 +258,7 @@ def unbook_failed_loans(self):
 
 @app.task(bind=True)
 @celery_error_email
-def populate_available_cash_flow(self, nbfc=None):
+def populate_available_cash_flow(self, nbfc=None, due_date=None):
     """
     celery task to store json of nbfc id against available cash flow in the cache by repeated calculation
     """
@@ -261,7 +266,8 @@ def populate_available_cash_flow(self, nbfc=None):
     if nbfc:
         filtered_dict['nbfc_id'] = nbfc
 
-    due_date = datetime.now().date()
+    if not due_date:
+        due_date = datetime.now().date()
     hold_cash_value = Common.get_hold_cash_value(due_date)
     capital_inflow_value = Common.get_nbfc_capital_inflow(due_date)
 
@@ -276,7 +282,8 @@ def populate_available_cash_flow(self, nbfc=None):
     carry_forward = dict(CollectionAndLoanBookedData.objects.filter(**filtered_dict, due_date=due_date).values_list
                          ('nbfc_id', 'last_day_balance'))
     cal_data = {}
-    loan_booked_data = cache.get('loan_booked', {})
+    nbfc_loan_booked = task_for_loan_booked(nbfc, due_date, return_type='dict')
+
     for nbfc_id in prediction_amount_value:
         hold_cash = hold_cash_value.get(nbfc_id, 0)
         if hold_cash == 100:
@@ -290,7 +297,6 @@ def populate_available_cash_flow(self, nbfc=None):
         available_cash_flow = Common.get_available_cash_flow(prediction_cash_inflow, prev_day_carry_forward,
                                                              capital_inflow, hold_cash)
 
-        nbfc_loan_booked = loan_booked_data.get(nbfc_id, {})
         user_ratio = user_ratio_value.get(nbfc_id, [80, 20])
         old_ratio = user_ratio[0]
         new_ratio = user_ratio[1]
@@ -311,7 +317,7 @@ def populate_available_cash_flow(self, nbfc=None):
 
 @app.task(bind=True)
 @celery_error_email
-def task_for_loan_booked(self, nbfc_id=None):
+def task_for_loan_booked(self, nbfc_id=None, due_date=None, return_type='int'):
     """
     celery task for loan booked
     :return:
@@ -320,7 +326,8 @@ def task_for_loan_booked(self, nbfc_id=None):
     if nbfc_id:
         filtered_dict['nbfc_id'] = nbfc_id
 
-    due_date = datetime.now().date()
+    if not due_date:
+        due_date = datetime.now().date()
     loan_booked_instance = LoanDetail.objects.filter(updated_at__date=due_date, is_booked=True,
                                                      **filtered_dict).exclude(status='F')
     loan_booked_instance = loan_booked_instance.annotate(
@@ -333,6 +340,7 @@ def task_for_loan_booked(self, nbfc_id=None):
         total_amount=Sum('value')
     )
     loan_booked = loan_booked_instance.values_list('nbfc_id', 'total_amount', 'user_type')
+
     booked_data = {}
     for i in loan_booked:
         if i not in booked_data:
@@ -345,8 +353,11 @@ def task_for_loan_booked(self, nbfc_id=None):
         booked_data[i[0]]['total'] += i[1]
 
     if nbfc_id:
-        return booked_data.get(nbfc_id, {}).get('total', 0)
+        if return_type == 'int':
+            return booked_data.get(int(nbfc_id), {}).get('total', 0)
+        return booked_data.get(int(nbfc_id), {})
     cache.set('loan_booked', booked_data, 600)
+    return booked_data
 
 
 @app.task(bind=True)
@@ -494,15 +505,9 @@ def populate_last_day_balance(self, nbfc=None):
     last_day_balance_data = dict(CollectionAndLoanBookedData.objects.filter(due_date=due_date, **filtered_dict).
                                  values_list('nbfc_id', 'last_day_balance'))
     loan_booked_instance = LoanDetail.objects.filter(updated_at__date=due_date, is_booked=True,
-                                                     **filtered_dict).exclude(status='F')
-    loan_booked_instance = loan_booked_instance.annotate(
-        value=Case(
-            When(status='P', then=F('amount')),
-            default=F('credit_limit')
-        )
-    )
+                                                     **filtered_dict, status='P').exclude(status='F')
     loan_booked_instance = loan_booked_instance.values('nbfc_id').order_by('nbfc_id').annotate(
-        total_amount=Sum('value')
+        total_amount=Sum('amount')
     )
     loan_booked_dict = dict(loan_booked_instance.values_list('nbfc_id', 'total_amount'))
 
@@ -588,7 +593,14 @@ def populate_should_assign_should_check_cache(self):
     try:
         should_check_branches = set(
             NBFCEligibilityCashFlowHead.objects.filter(should_check=True).values_list('nbfc_id', flat=True))
-        cache.set('should_check', list(should_check_branches), timeout=172800)
+        should_check_list = list(should_check_branches)
+        branch_list = list(NbfcBranchMaster.objects.filter(is_enable=True).values_list('id', flat=True))
+        blocked_check_list = list(set(
+            NBFCEligibilityCashFlowHead.objects.filter(should_check=False).values_list('nbfc_id', flat=True)))
+        for branch in branch_list:
+            if branch not in should_check_list and branch not in blocked_check_list:
+                should_check_list.append(branch)
+        cache.set('should_check', should_check_list, timeout=172800)
         should_assign_branches = set(
             NBFCEligibilityCashFlowHead.objects.filter(should_assign=True).values_list('nbfc_id', flat=True))
         cache.set('should_assign', list(should_assign_branches), timeout=172800)
