@@ -371,9 +371,7 @@ class GetCashFlowView(BaseModelViewSet):
         try:
             predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
 
-            loan_booked = cache.get('loan_booked', {}).get(nbfc_id, {}).get('total', 0)
-            if not loan_booked:
-                loan_booked = task_for_loan_booked(nbfc_id)
+            loan_booked = task_for_loan_booked(nbfc_id, due_date)
 
             collection_data = Common.get_collection_and_last_day_balance(nbfc_id, due_date)
             collection = collection_data[0]
@@ -387,9 +385,7 @@ class GetCashFlowView(BaseModelViewSet):
             old_user_percentage = user_ratio[0]
             new_user_percentage = user_ratio[1]
 
-            available_cash = cache.get('available_balance', {}).get(nbfc_id, {}).get('total', 0)
-            if not available_cash:
-                available_cash = populate_available_cash_flow(nbfc_id)
+            available_cash = populate_available_cash_flow(nbfc_id, due_date)
 
             variance = Common.get_real_time_variance(predicted_cash_inflow, collection)
             loan_booked_variance = Common.get_loan_booked_over_available_cash(loan_booked, available_cash)

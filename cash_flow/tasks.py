@@ -253,7 +253,7 @@ def unbook_failed_loans(self):
 
 @app.task(bind=True)
 @celery_error_email
-def populate_available_cash_flow(self, nbfc=None):
+def populate_available_cash_flow(self, nbfc=None, due_date=None):
     """
     celery task to store json of nbfc id against available cash flow in the cache by repeated calculation
     """
@@ -261,7 +261,8 @@ def populate_available_cash_flow(self, nbfc=None):
     if nbfc:
         filtered_dict['nbfc_id'] = nbfc
 
-    due_date = datetime.now().date()
+    if not due_date:
+        due_date = datetime.now().date()
     hold_cash_value = Common.get_hold_cash_value(due_date)
     capital_inflow_value = Common.get_nbfc_capital_inflow(due_date)
 
@@ -311,7 +312,7 @@ def populate_available_cash_flow(self, nbfc=None):
 
 @app.task(bind=True)
 @celery_error_email
-def task_for_loan_booked(self, nbfc_id=None):
+def task_for_loan_booked(self, nbfc_id=None, due_date=None):
     """
     celery task for loan booked
     :return:
@@ -320,7 +321,8 @@ def task_for_loan_booked(self, nbfc_id=None):
     if nbfc_id:
         filtered_dict['nbfc_id'] = nbfc_id
 
-    due_date = datetime.now().date()
+    if not due_date:
+        due_date = datetime.now().date()
     loan_booked_instance = LoanDetail.objects.filter(updated_at__date=due_date, is_booked=True,
                                                      **filtered_dict).exclude(status='F')
     loan_booked_instance = loan_booked_instance.annotate(
