@@ -123,7 +123,7 @@ class Common:
         hold_cash = hold_cash if hold_cash is not None else 0.0
         loan_booked = loan_booked if loan_booked is not None else 0.0
 
-        carry_forward = (collection + capital_inflow) * (1 - (hold_cash / 100)) + loan_booked
+        carry_forward = (collection + capital_inflow) * (1 - (hold_cash / 100)) - loan_booked
         if carry_forward is None:
             return 0
         return carry_forward
