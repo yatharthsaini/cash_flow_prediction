@@ -67,15 +67,9 @@ class Common:
         """
         projection_collection_instance = ProjectionCollectionData.objects.filter(
             nbfc=nbfc_id,
-            due_date=due_date
-        ).first()
-        amount = 0.0
-        if projection_collection_instance:
-            amount = ProjectionCollectionData.objects.filter(
-                nbfc=nbfc_id,
-                due_date=due_date
-            ).aggregate(Sum('amount'))['amount__sum']
-        return amount
+            collection_date=due_date
+        ).values_list('amount', flat=True)
+        return sum(projection_collection_instance)
 
     @staticmethod
     def get_prev_day_carry_forward(nbfc_id: int, due_date: date) -> float:
@@ -145,7 +139,7 @@ class Common:
         variance = 0
         if predicted_cash_inflow != 0:
             variance = ((predicted_cash_inflow - collection) / predicted_cash_inflow) * 100
-        return variance
+        return round(variance, 2)
 
     @staticmethod
     def get_available_cash_flow(predicted_cash_inflow: float, prev_day_carry_forward: float,
@@ -292,8 +286,8 @@ class Common:
         """
         loan_booked_variance = 0.0
         if available_cash != 0:
-            loan_booked_variance = ((loan_booked - available_cash)/available_cash) * 100
-        return loan_booked_variance
+            loan_booked_variance = (loan_booked/available_cash) * 100
+        return round(loan_booked_variance, 2)
 
 
 def calculate_age(dob):
