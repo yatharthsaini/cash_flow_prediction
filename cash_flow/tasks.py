@@ -211,6 +211,8 @@ def populate_loan_booked_amount(self):
     if loan_booked_response:
         loan_booked_data = loan_booked_response.get('data', {})
         for nbfc_id, loan_booked in loan_booked_data.items():
+            if nbfc_id == '5':
+                continue
             # Try to get an existing record for the NBFC and due_date
             CollectionAndLoanBookedData.objects.update_or_create(
                 nbfc_id=nbfc_id,
