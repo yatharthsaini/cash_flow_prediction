@@ -290,10 +290,10 @@ class Common:
         :param available_cash:
         :returns: the ratio of the (loan_booked - available_cash/ available_cash) * 100
         """
-        ratio = 0.0
+        loan_booked_variance = 0.0
         if available_cash != 0:
-            ratio = ((loan_booked - available_cash)/available_cash) * 100
-        return ratio
+            loan_booked_variance = ((loan_booked - available_cash)/available_cash) * 100
+        return loan_booked_variance
 
 
 def calculate_age(dob):
