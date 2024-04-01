@@ -178,6 +178,8 @@ class HoldCashDataView(APIView):
         hold_cash = payload.get('hold_cash', None)
         if hold_cash is None:
             return Response({"error": "hold_cash is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if hold_cash not in range(0, 101):
+            return Response({"error": "hold_cash value can be from 0 to 100 only"}, status=status.HTTP_400_BAD_REQUEST)
         due_date = payload.get('due_date', None)
         if due_date:
             due_date = datetime.strptime(due_date, "%Y-%m-%d")
@@ -359,56 +361,50 @@ class GetCashFlowView(BaseModelViewSet):
         nbfc_id = payload.get('nbfc_id', None)
         if nbfc_id is None or nbfc_id == '':
             return Response({"error": "NBFC is required"}, status=status.HTTP_400_BAD_REQUEST)
+        nbfc_id = int(nbfc_id)
         due_date = payload.get('due_date', None)
         if due_date:
-            due_date = datetime.strptime(due_date, "%Y-%m-%d")
+            due_date = datetime.strptime(due_date, "%Y-%m-%d").date()
         else:
             due_date = datetime.now()
         master_instance = NbfcBranchMaster.objects.filter(id=nbfc_id).first()
         if master_instance is None:
             return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
 
-        try:
-            predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
+        predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
 
-            loan_booked = cache.get('loan_booked', {}).get(nbfc_id, {}).get('total', 0)
-            if not loan_booked:
-                loan_booked = task_for_loan_booked(nbfc_id)
+        loan_booked = task_for_loan_booked(nbfc_id, due_date)
 
-            collection_data = Common.get_collection_and_last_day_balance(nbfc_id, due_date)
-            collection = collection_data[0]
-            if collection is None:
-                collection = 0
-            last_day_balance = collection_data[1]
+        collection_data = Common.get_collection_and_last_day_balance(nbfc_id, due_date)
+        collection = collection_data[0]
+        if collection is None:
+            collection = 0
+        last_day_balance = collection_data[1]
 
-            capital_inflow = Common.get_nbfc_capital_inflow(due_date, nbfc_id)
-            hold_cash = Common.get_hold_cash_value(due_date, nbfc_id)
-            user_ratio = Common.get_user_ratio(due_date, nbfc_id)
-            old_user_percentage = user_ratio[0]
-            new_user_percentage = user_ratio[1]
+        capital_inflow = Common.get_nbfc_capital_inflow(due_date, nbfc_id)
+        hold_cash = Common.get_hold_cash_value(due_date, nbfc_id)
+        user_ratio = Common.get_user_ratio(due_date, nbfc_id)
+        old_user_percentage = user_ratio[0]
+        new_user_percentage = user_ratio[1]
 
-            available_cash = cache.get('available_balance', {}).get(nbfc_id, {}).get('total')
+        available_cash = populate_available_cash_flow(nbfc_id, due_date)
 
-            if not available_cash:
-                available_cash = populate_available_cash_flow(nbfc_id)
+        variance = Common.get_real_time_variance(predicted_cash_inflow, collection)
+        loan_booked_variance = Common.get_loan_booked_over_available_cash(loan_booked, available_cash)
 
-            variance = Common.get_real_time_variance(predicted_cash_inflow, collection)
-
-            return Response({
-                'predicted_cash_inflow': predicted_cash_inflow,
-                'collection': collection,
-                'carry_forward': last_day_balance,
-                'capital_inflow': capital_inflow,
-                'hold_cash': hold_cash,
-                'loan_booked': loan_booked,
-                'available_cash_flow': available_cash,
-                'variance': variance,
-                'old_user_percentage': old_user_percentage,
-                'new_user_percentage': new_user_percentage
-            }, status=status.HTTP_200_OK)
-        except Exception as e:
-            error_message = str(e)
-            return Response({'error', error_message}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({
+            'predicted_cash_inflow': predicted_cash_inflow,
+            'collection': collection,
+            'carry_forward': last_day_balance,
+            'capital_inflow': capital_inflow,
+            'hold_cash': hold_cash,
+            'loan_booked': loan_booked,
+            'available_cash_flow': available_cash,
+            'variance': variance,
+            'loan_booked_variance': loan_booked_variance,
+            'old_user_percentage': old_user_percentage,
+            'new_user_percentage': new_user_percentage
+        }, status=status.HTTP_200_OK)
 
 
 class SuccessStatus(APIView):
