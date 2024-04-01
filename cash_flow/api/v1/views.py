@@ -387,12 +387,12 @@ class GetCashFlowView(BaseModelViewSet):
             old_user_percentage = user_ratio[0]
             new_user_percentage = user_ratio[1]
 
-            available_cash = cache.get('available_balance', {}).get(nbfc_id, {}).get('total')
-
+            available_cash = cache.get('available_balance', {}).get(nbfc_id, {}).get('total', 0)
             if not available_cash:
                 available_cash = populate_available_cash_flow(nbfc_id)
 
             variance = Common.get_real_time_variance(predicted_cash_inflow, collection)
+            loan_booked_variance = Common.get_loan_booked_over_available_cash(loan_booked, available_cash)
 
             return Response({
                 'predicted_cash_inflow': predicted_cash_inflow,
@@ -403,6 +403,7 @@ class GetCashFlowView(BaseModelViewSet):
                 'loan_booked': loan_booked,
                 'available_cash_flow': available_cash,
                 'variance': variance,
+                'loan_booked_variance': loan_booked_variance,
                 'old_user_percentage': old_user_percentage,
                 'new_user_percentage': new_user_percentage
             }, status=status.HTTP_200_OK)

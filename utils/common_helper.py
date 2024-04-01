@@ -283,6 +283,18 @@ class Common:
             return user_ratio_value.get(nbfc_id, [80, 20])
         return user_ratio_value
 
+    @staticmethod
+    def get_loan_booked_over_available_cash(loan_booked, available_cash):
+        """
+        :param loan_booked:
+        :param available_cash:
+        :returns: the ratio of the (loan_booked - available_cash/ available_cash) * 100
+        """
+        ratio = 0.0
+        if available_cash != 0:
+            ratio = ((loan_booked - available_cash)/available_cash) * 100
+        return ratio
+
 
 def calculate_age(dob):
     """
