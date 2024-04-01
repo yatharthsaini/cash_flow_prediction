@@ -277,7 +277,7 @@ def populate_available_cash_flow(self, nbfc=None, due_date=None):
     carry_forward = dict(CollectionAndLoanBookedData.objects.filter(**filtered_dict, due_date=due_date).values_list
                          ('nbfc_id', 'last_day_balance'))
     cal_data = {}
-    loan_booked_data = cache.get('loan_booked', {})
+    loan_booked_data = cache.get('loan_booked', {}) if not nbfc else task_for_loan_booked(nbfc, due_date)
     for nbfc_id in prediction_amount_value:
         hold_cash = hold_cash_value.get(nbfc_id, 0)
         if hold_cash == 100:
