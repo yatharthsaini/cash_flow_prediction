@@ -559,7 +559,7 @@ def populate_last_day_balance(self, nbfc=None, date=None):
         else:
             # Create a new object if no existing objects found
             CollectionAndLoanBookedData.objects.create(
-                nbfc_di=nbfc_id,
+                nbfc_id=nbfc_id,
                 due_date=due_date,
                 last_day_balance=last_day_balance
             )
@@ -578,7 +578,7 @@ def populate_last_day_balance(self, nbfc=None, date=None):
         else:
             # Create a new object if no existing objects found
             CollectionAndLoanBookedData.objects.create(
-                nbfc_di=nbfc_id,
+                nbfc_id=nbfc_id,
                 due_date=due_date,
                 loan_booked=loan_booked
             )
