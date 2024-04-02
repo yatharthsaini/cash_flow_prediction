@@ -110,18 +110,33 @@ def populate_wacm(self, due_date=None):
             except ObjectDoesNotExist:
                 continue
 
-            try:
-                obj, created = ProjectionCollectionData.objects.update_or_create(
+            existing_objects = ProjectionCollectionData.objects.filter(
+                nbfc=nbfc_instance,
+                due_date=due_date,
+                collection_date=collection_date
+            )
+
+            if existing_objects.exists():
+                latest_object = existing_objects.latest('created_at')
+                latest_object.amount = total_amount
+                latest_object.old_user_amount = old_user_amount
+                latest_object.new_user_amount = new_user_amount
+                latest_object.due_amount = projection_amount
+                latest_object.save()
+
+                # Delete other objects except the latest one
+                existing_objects.exclude(id=latest_object.id).delete()
+            else:
+                # Create a new object if no existing objects found
+                ProjectionCollectionData.objects.create(
                     nbfc=nbfc_instance,
                     due_date=due_date,
                     collection_date=collection_date,
-                    defaults={'amount': total_amount, 'old_user_amount': old_user_amount,
-                              'new_user_amount': new_user_amount, 'due_amount': projection_amount}
+                    amount=total_amount,
+                    old_user_amount=old_user_amount,
+                    new_user_amount=new_user_amount,
+                    due_amount=projection_amount
                 )
-            except ProjectionCollectionData.MultipleObjectsReturned:
-                # Handle the case where multiple objects are returned
-                # For example, you might want to log an error or take some other action
-                continue
 
 
 @app.task(bind=True)
