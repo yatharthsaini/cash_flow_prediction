@@ -374,8 +374,7 @@ class GetCashFlowView(BaseModelViewSet):
         predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
 
         # loan_booked = task_for_loan_booked(nbfc_id, due_date)
-        loan_booked_instance = LoanDetail.objects.filter(updated_at__date=due_date, is_booked=True, nbfc_id=nbfc_id, status='P')
-        loan_booked = sum(loan_booked_instance.values_list('amount', flat=True))
+        loan_booked = LoanDetail.objects.filter(updated_at__date=due_date, is_booked=True, nbfc_id=nbfc_id, status='P').aggregate(Sum('amount'))['amount__sum'] or 0
 
         collection_data = Common.get_collection_and_last_day_balance(nbfc_id, due_date)
         collection = collection_data[0]
