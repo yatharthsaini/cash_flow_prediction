@@ -258,7 +258,7 @@ def unbook_failed_loans(self):
 
 @app.task(bind=True)
 @celery_error_email
-def populate_available_cash_flow(self, nbfc=None, due_date=None):
+def populate_available_cash_flow(self, nbfc=None, due_date=None, include_booking=True):
     """
     celery task to store json of nbfc id against available cash flow in the cache by repeated calculation
     """
@@ -304,11 +304,18 @@ def populate_available_cash_flow(self, nbfc=None, due_date=None):
         old_value = (available_cash_flow * old_ratio) / 100
         new_value = (available_cash_flow * new_ratio) / 100
 
-        cal_data[nbfc_id] = {
-            'O': old_value - nbfc_loan_booked.get('O', 0),
-            'N': new_value - nbfc_loan_booked.get('N', 0),
-            'total': available_cash_flow - nbfc_loan_booked.get('total', 0)
-        }
+        if include_booking:
+            cal_data[nbfc_id] = {
+                'O': old_value - nbfc_loan_booked.get('O', 0),
+                'N': new_value - nbfc_loan_booked.get('N', 0),
+                'total': available_cash_flow - nbfc_loan_booked.get('total', 0)
+            }
+        else:
+            cal_data[nbfc_id] = {
+                'O': old_value,
+                'N': new_value,
+                'total': available_cash_flow
+            }
 
     if nbfc:
         return cal_data.get(nbfc, {}).get('total', 0)

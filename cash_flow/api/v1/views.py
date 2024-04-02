@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from rest_framework.permissions import AllowAny
 from rest_framework.viewsets import ModelViewSet
@@ -374,12 +374,12 @@ class GetCashFlowView(BaseModelViewSet):
         predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
 
         loan_booked = task_for_loan_booked(nbfc_id, due_date)
-
+        prev_day = due_date - timedelta(days=1)
         collection_data = Common.get_collection_and_last_day_balance(nbfc_id, due_date)
         collection = collection_data[0]
         if collection is None:
             collection = 0
-        last_day_balance = collection_data[1]
+        # last_day_balance = collection_data[1]
 
         capital_inflow = Common.get_nbfc_capital_inflow(due_date, nbfc_id)
         hold_cash = Common.get_hold_cash_value(due_date, nbfc_id)
@@ -387,15 +387,22 @@ class GetCashFlowView(BaseModelViewSet):
         old_user_percentage = user_ratio[0]
         new_user_percentage = user_ratio[1]
 
-        available_cash = populate_available_cash_flow(nbfc_id, due_date)
+        # available_cash = populate_available_cash_flow(nbfc_id, due_date, include_booking=False)
+        prev_day_loan_booked = task_for_loan_booked(nbfc_id, prev_day)
+        prev_day_collection_data = Common.get_collection_and_last_day_balance(nbfc_id, prev_day)
+        prev_day_collection = prev_day_collection_data[0]
+        if prev_day_collection is None:
+            prev_day_collection = 0
 
+        carry_forward = Common.get_prev_day_carry_forward(nbfc_id, due_date, prev_day_loan_booked, prev_day_collection)
         variance = Common.get_real_time_variance(predicted_cash_inflow, collection)
+        available_cash = Common.get_available_cash_flow(predicted_cash_inflow, carry_forward, capital_inflow, hold_cash)
         loan_booked_variance = Common.get_loan_booked_over_available_cash(loan_booked, available_cash)
 
         return Response({
             'predicted_cash_inflow': predicted_cash_inflow,
             'collection': collection,
-            'carry_forward': last_day_balance,
+            'carry_forward': carry_forward,
             'capital_inflow': capital_inflow,
             'hold_cash': hold_cash,
             'loan_booked': loan_booked,

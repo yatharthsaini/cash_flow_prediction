@@ -4,7 +4,6 @@ import base64
 import glob
 
 from datetime import date, timedelta, datetime
-from django.db.models import Sum
 from django.db.models import Q
 from django.core.cache import cache
 from cash_flow.models import (CollectionAndLoanBookedData, ProjectionCollectionData,
@@ -47,7 +46,7 @@ class Common:
         collection_and_loan_booked_instance = CollectionAndLoanBookedData.objects.filter(
             nbfc_id=nbfc_id,
             due_date=due_date
-        ).order_by('created_at').first()
+        ).first()
 
         collection = 0.0
         last_day_balance = 0.0
@@ -72,37 +71,23 @@ class Common:
         return sum(projection_collection_instance)
 
     @staticmethod
-    def get_prev_day_carry_forward(nbfc_id: int, due_date: date) -> float:
+    def get_prev_day_carry_forward(nbfc_id: int, due_date: date, prev_day_loan_booked: int, prev_day_collection: int) \
+            -> float:
         """
-        this function is used for calculating the prev day carry forward using filters of prev day on
-        capital_inflow, hold_cash, loan_booked, and collection
-        :param nbfc_id: an int representing the nbfc_id
-        :param due_date: a date field representing due_date
-        :return: a float val for carry_forward
+        :param nbfc_id:
+        :param due_date:
+        :param prev_day_loan_booked:
+        :param prev_day_collection:
+        :return:
         """
         prev_day = due_date - timedelta(days=1)
-        prev_day_capital_inflow = 0.0
-        prev_day_capital_inflow_instance = CapitalInflowData.objects.filter(nbfc_id=nbfc_id,
-                                                                            start_date__lte=prev_day,
-                                                                            end_date__gte=prev_day).first()
-        if prev_day_capital_inflow_instance:
-            prev_day_capital_inflow = prev_day_capital_inflow_instance.capital_inflow
+        prev_day_capital_inflow = Common.get_nbfc_capital_inflow(prev_day, nbfc_id)
+        if not prev_day_capital_inflow:
+            prev_day_capital_inflow = 0.0
 
-        prev_day_hold_cash = 0.0
-        prev_day_hold_cash_instance = HoldCashData.objects.filter(nbfc_id=nbfc_id,
-                                                                  start_date__lte=prev_day,
-                                                                  end_date__gte=prev_day).first()
-        if prev_day_hold_cash_instance:
-            prev_day_hold_cash = prev_day_hold_cash_instance.hold_cash
-
-        prev_day_collection = 0.0
-        prev_day_loan_booked = 0.0
-        prev_day_collection_and_loan_booked_instance = CollectionAndLoanBookedData.objects.filter(nbfc_id=nbfc_id,
-                                                                                                  due_date=prev_day).first()
-
-        if prev_day_collection_and_loan_booked_instance:
-            prev_day_collection = prev_day_collection_and_loan_booked_instance.collection
-            prev_day_loan_booked = prev_day_collection_and_loan_booked_instance.loan_booked
+        prev_day_hold_cash = Common.get_hold_cash_value(prev_day, nbfc_id)
+        if not prev_day_hold_cash:
+            prev_day_hold_cash = 0.0
 
         return Common.get_carry_forward(prev_day_collection, prev_day_capital_inflow,
                                         prev_day_hold_cash, prev_day_loan_booked)
