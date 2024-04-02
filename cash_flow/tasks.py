@@ -236,11 +236,11 @@ def populate_loan_booked_amount(self, due_date=None):
             if nbfc_id == '5':
                 continue
             # Try to get an existing record for the NBFC and due_date
-            CollectionAndLoanBookedData.objects.update_or_create(
-                nbfc_id=nbfc_id,
-                due_date=due_date,
-                defaults={'loan_booked': loan_booked}
-            )
+            # CollectionAndLoanBookedData.objects.update_or_create(
+            #     nbfc_id=nbfc_id,
+            #     due_date=due_date,
+            #     defaults={'loan_booked': loan_booked}
+            # )
 
 
 @app.task(bind=True)
@@ -508,15 +508,15 @@ def task_for_loan_booking(self, credit_limit, loan_type, request_type, user_id, 
 
 @app.task(bind=True)
 @celery_error_email
-def populate_last_day_balance(self, nbfc=None, due_date=None):
+def populate_last_day_balance(self, nbfc=None, date=None):
     """
     celery task to populate last day balance in models.ProjectionCollectionData
     required things to calculate prev day carry forward are: collection amount, capital inflow, hold_cash,
     loan_booked
     """
     filtered_dict = {}
-    today = due_date
-    if not today:
+    today = date
+    if not date:
         today = datetime.now().date()
     due_date = today - timedelta(days=1)
     if nbfc:
@@ -541,16 +541,47 @@ def populate_last_day_balance(self, nbfc=None, due_date=None):
         capital_inflow = capital_inflow_value.get(nbfc_id, 0)
 
         loan_booked = loan_booked_dict.get(nbfc_id, 0)
-
         if loan_booked is None:
             loan_booked = 0
         last_day_balance = Common.get_carry_forward(collection_amount, capital_inflow, hold_cash, loan_booked)
-        CollectionAndLoanBookedData.objects.update_or_create(
-            nbfc_id=nbfc_id,
-            due_date=today,
-            defaults={'last_day_balance': last_day_balance}
-        )
 
+        existing_objects_for_last_day_balance = CollectionAndLoanBookedData.objects.filter(
+            nbfc_id=nbfc_id,
+            due_date=today)
+
+        if existing_objects_for_last_day_balance.exists():
+            latest_object = existing_objects_for_last_day_balance.latest('created_at')
+            latest_object.last_day_balance = last_day_balance
+            # Delete other objects except the latest one
+            existing_objects_for_last_day_balance.exclude(id=latest_object.id).delete()
+            latest_object.save()
+
+        else:
+            # Create a new object if no existing objects found
+            CollectionAndLoanBookedData.objects.create(
+                nbfc_di=nbfc_id,
+                due_date=due_date,
+                last_day_balance=last_day_balance
+            )
+
+        existing_objects_for_loan_booked = CollectionAndLoanBookedData.objects.filter(
+            nbfc_id=nbfc_id,
+            due_date=due_date)
+
+        if existing_objects_for_loan_booked.exists():
+            latest_object = existing_objects_for_loan_booked.latest('created_at')
+            latest_object.loan_booked = loan_booked
+            # Delete other objects except the latest one
+            existing_objects_for_loan_booked.exclude(id=latest_object.id).delete()
+            latest_object.save()
+
+        else:
+            # Create a new object if no existing objects found
+            CollectionAndLoanBookedData.objects.create(
+                nbfc_di=nbfc_id,
+                due_date=due_date,
+                loan_booked=loan_booked
+            )
 
 @app.task(bind=True)
 @celery_error_email
