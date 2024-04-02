@@ -110,14 +110,18 @@ def populate_wacm(self, due_date=None):
             except ObjectDoesNotExist:
                 continue
 
-            # db constraint of not getting the duplicate set of same nbfc, due_date and collection_date
-            ProjectionCollectionData.objects.update_or_create(
-                nbfc=nbfc_instance,
-                due_date=due_date,
-                collection_date=collection_date,
-                defaults={'amount': total_amount, 'old_user_amount': old_user_amount,
-                          'new_user_amount': new_user_amount, 'due_amount': projection_amount}
-            )
+            try:
+                obj, created = ProjectionCollectionData.objects.update_or_create(
+                    nbfc=nbfc_instance,
+                    due_date=due_date,
+                    collection_date=collection_date,
+                    defaults={'amount': total_amount, 'old_user_amount': old_user_amount,
+                              'new_user_amount': new_user_amount, 'due_amount': projection_amount}
+                )
+            except ProjectionCollectionData.MultipleObjectsReturned:
+                # Handle the case where multiple objects are returned
+                # For example, you might want to log an error or take some other action
+                continue
 
 
 @app.task(bind=True)
