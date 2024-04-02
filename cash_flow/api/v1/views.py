@@ -366,14 +366,17 @@ class GetCashFlowView(BaseModelViewSet):
         if due_date:
             due_date = datetime.strptime(due_date, "%Y-%m-%d").date()
         else:
-            due_date = datetime.now()
+            due_date = datetime.now().date()
         master_instance = NbfcBranchMaster.objects.filter(id=nbfc_id).first()
         if master_instance is None:
             return Response({"error": "NBFC not registered to branch master"}, status=status.HTTP_404_NOT_FOUND)
 
         predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
 
-        loan_booked = task_for_loan_booked(nbfc_id, due_date)
+        # loan_booked = task_for_loan_booked(nbfc_id, due_date)
+        loan_booked_instance = LoanDetail.objects.filter(updated_at__date=due_date, is_booked=True, nbfc_id=nbfc_id, status='P')
+        loan_booked = sum(loan_booked_instance.values_list('amount', flat=True))
+
         collection_data = Common.get_collection_and_last_day_balance(nbfc_id, due_date)
         collection = collection_data[0]
         if collection is None:
