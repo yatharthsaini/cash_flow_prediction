@@ -176,8 +176,8 @@ class HoldCashDataView(APIView):
         if nbfc_id is None:
             return Response({"error": "nbfc_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         hold_cash = payload.get('hold_cash', None)
-        if hold_cash is None:
-            return Response({"error": "hold_cash is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not str(hold_cash).isdigit():
+            return Response({"error": "Invalid hold cash"}, status=status.HTTP_400_BAD_REQUEST)
         if hold_cash not in range(0, 101):
             return Response({"error": "hold_cash value can be from 0 to 100 only"}, status=status.HTTP_400_BAD_REQUEST)
         due_date = payload.get('due_date', None)
@@ -266,8 +266,8 @@ class UserRatioDataView(APIView):
         if nbfc_id is None:
             return Response({"error": "nbfc_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         old_percentage = payload.get('old_percentage', None)
-        if old_percentage is None:
-            return Response({"error": "old_percentage is required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not str(old_percentage).isdigit():
+            return Response({"error": "Invalid old percentage"}, status=status.HTTP_400_BAD_REQUEST)
         new_percentage = 100 - float(old_percentage)
         due_date = payload.get('due_date', None)
         if due_date:
