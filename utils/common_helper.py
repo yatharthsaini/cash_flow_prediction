@@ -255,8 +255,8 @@ class Common:
         user_ratio_value = {}
         for item in user_ratio_instance:
             item_list = list(item)
-            nbfc_id = item_list.pop(0)
-            user_ratio_value[nbfc_id] = tuple(item_list)
+            nbfc_key = item_list.pop(0)
+            user_ratio_value[nbfc_key] = tuple(item_list)
 
         if nbfc_id:
             return user_ratio_value.get(nbfc_id, [80, 20])
