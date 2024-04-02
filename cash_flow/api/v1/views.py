@@ -374,7 +374,6 @@ class GetCashFlowView(BaseModelViewSet):
         predicted_cash_inflow = Common.get_predicted_cash_inflow(nbfc_id, due_date)
 
         loan_booked = task_for_loan_booked(nbfc_id, due_date)
-
         collection_data = Common.get_collection_and_last_day_balance(nbfc_id, due_date)
         collection = collection_data[0]
         if collection is None:
@@ -387,9 +386,9 @@ class GetCashFlowView(BaseModelViewSet):
         old_user_percentage = user_ratio[0]
         new_user_percentage = user_ratio[1]
 
-        available_cash = populate_available_cash_flow(nbfc_id, due_date)
-
         variance = Common.get_real_time_variance(predicted_cash_inflow, collection)
+        available_cash = Common.get_available_cash_flow(predicted_cash_inflow, last_day_balance, capital_inflow,
+                                                        hold_cash)
         loan_booked_variance = Common.get_loan_booked_over_available_cash(loan_booked, available_cash)
 
         return Response({
