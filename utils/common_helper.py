@@ -210,7 +210,7 @@ class Common:
         capital_inflow_value = dict(CapitalInflowData.objects.filter(
             Q(start_date=due_date, end_date__isnull=True) | Q(start_date__lte=due_date, end_date__gte=due_date,
                                                               end_date__isnull=False), **filtered_dict
-        ).values_list('nbfc_id', 'capital_inflow'))
+        ).order_by('updated_at').values_list('nbfc_id', 'capital_inflow'))
 
         if nbfc_id:
             return capital_inflow_value.get(nbfc_id, 0)
@@ -230,7 +230,7 @@ class Common:
         hold_cash_value = dict(HoldCashData.objects.filter(
             Q(start_date=due_date, end_date__isnull=True) | Q(start_date__lte=due_date, end_date__gte=due_date,
                                                               end_date__isnull=False), **filtered_dict
-        ).values_list('nbfc_id', 'hold_cash'))
+        ).order_by('updated_at').values_list('nbfc_id', 'hold_cash'))
 
         if nbfc_id:
             return hold_cash_value.get(nbfc_id, 0)
@@ -250,12 +250,14 @@ class Common:
         user_ratio_instance = UserRatioData.objects.filter(
             Q(start_date=due_date, end_date__isnull=True) | Q(start_date__lte=due_date, end_date__gte=due_date,
                                                               end_date__isnull=False), **filtered_dict
-        ).values_list('nbfc_id', 'old_percentage', 'new_percentage')
+        ).order_by('-updated_at').values_list('nbfc_id', 'old_percentage', 'new_percentage')
 
         user_ratio_value = {}
         for item in user_ratio_instance:
             item_list = list(item)
             nbfc_key = item_list.pop(0)
+            if nbfc_key in user_ratio_value:
+                continue
             user_ratio_value[nbfc_key] = tuple(item_list)
 
         if nbfc_id:
@@ -271,7 +273,7 @@ class Common:
         """
         loan_booked_variance = 0.0
         if available_cash != 0:
-            loan_booked_variance = (loan_booked/available_cash) * 100
+            loan_booked_variance = ((loan_booked - available_cash)/available_cash)*100
         return round(loan_booked_variance, 2)
 
 

@@ -87,8 +87,9 @@ class CapitalInflowDataView(APIView):
         if nbfc_id is None:
             return Response({"error": "nbfc_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         capital_inflow = payload.get('capital_inflow', None)
-        if capital_inflow is None:
+        if not str(capital_inflow).isdigit():
             return Response({"error": "capital_inflow is required"}, status=status.HTTP_400_BAD_REQUEST)
+        capital_inflow = int(capital_inflow)
         due_date = payload.get('due_date', None)
         if due_date:
             due_date = datetime.strptime(due_date, "%Y-%m-%d")
@@ -178,6 +179,7 @@ class HoldCashDataView(APIView):
         hold_cash = payload.get('hold_cash', None)
         if not str(hold_cash).isdigit():
             return Response({"error": "Invalid hold cash"}, status=status.HTTP_400_BAD_REQUEST)
+        hold_cash = int(hold_cash)
         if hold_cash not in range(0, 101):
             return Response({"error": "hold_cash value can be from 0 to 100 only"}, status=status.HTTP_400_BAD_REQUEST)
         due_date = payload.get('due_date', None)
@@ -266,8 +268,11 @@ class UserRatioDataView(APIView):
         if nbfc_id is None:
             return Response({"error": "nbfc_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         old_percentage = payload.get('old_percentage', None)
-        if not str(old_percentage).isdigit():
+        if not old_percentage:
             return Response({"error": "Invalid old percentage"}, status=status.HTTP_400_BAD_REQUEST)
+        old_percentage = float(old_percentage)
+        if old_percentage > 100 or old_percentage < 0:
+            return Response({"error": "Old percentage value out of range"}, status=status.HTTP_400_BAD_REQUEST)
         new_percentage = 100 - float(old_percentage)
         due_date = payload.get('due_date', None)
         if due_date:
