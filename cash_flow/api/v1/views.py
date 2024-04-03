@@ -271,6 +271,8 @@ class UserRatioDataView(APIView):
         if not old_percentage:
             return Response({"error": "Invalid old percentage"}, status=status.HTTP_400_BAD_REQUEST)
         old_percentage = float(old_percentage)
+        if old_percentage > 100 or old_percentage < 0:
+            return Response({"error": "Old percentage value out of range"}, status=status.HTTP_400_BAD_REQUEST)
         new_percentage = 100 - float(old_percentage)
         due_date = payload.get('due_date', None)
         if due_date:
